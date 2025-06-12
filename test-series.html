@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Series Functionality</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .form-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; }
+        input, select { padding: 8px; width: 200px; }
+        button { padding: 10px 20px; margin: 10px 5px; }
+        #result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Test Series Functionality</h1>
+    
+    <h2>Add New Series</h2>
+    <form id="testSeriesForm">
+        <div class="form-group">
+            <label for="seriesName">Series Name:</label>
+            <input type="text" id="seriesName" name="seriesName" value="Test Series 2024" required>
+        </div>
+        <div class="form-group">
+            <label for="startDate">Start Date:</label>
+            <input type="date" id="startDate" name="startDate" required>
+        </div>
+        <div class="form-group">
+            <label for="endDate">End Date:</label>
+            <input type="date" id="endDate" name="endDate" required>
+        </div>
+        <div class="form-group">
+            <label for="status">Status:</label>
+            <select id="status" name="status" required>
+                <option value="">Select Status</option>
+                <option value="Upcoming">Upcoming</option>
+                <option value="Ongoing">Ongoing</option>
+                <option value="Completed">Completed</option>
+            </select>
+        </div>
+        <button type="submit">Add Series</button>
+    </form>
+
+    <button onclick="loadSeries()">Load All Series</button>
+    
+    <div id="result"></div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5000/api';
+
+        // Set default dates
+        document.getElementById('startDate').value = '2024-01-01';
+        document.getElementById('endDate').value = '2024-01-31';
+        document.getElementById('status').value = 'Upcoming';
+
+        document.getElementById('testSeriesForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const seriesData = {
+                series_name: formData.get('seriesName'),
+                start_date: formData.get('startDate'),
+                end_date: formData.get('endDate'),
+                status: formData.get('status')
+            };
+            
+            console.log('Sending series data:', seriesData);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/series`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(seriesData)
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    document.getElementById('result').innerHTML = `
+                        <h3 style="color: green;">Success!</h3>
+                        <p>Series added successfully!</p>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    `;
+                    loadSeries(); // Reload the series list
+                } else {
+                    const errorData = await response.json();
+                    document.getElementById('result').innerHTML = `
+                        <h3 style="color: red;">Error!</h3>
+                        <p>Failed to add series: ${errorData.error || 'Unknown error'}</p>
+                    `;
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                document.getElementById('result').innerHTML = `
+                    <h3 style="color: red;">Network Error!</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
+
+        async function loadSeries() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/series`);
+                const series = await response.json();
+                
+                let html = `<h3>All Series (${series.length} found):</h3>`;
+                if (series.length > 0) {
+                    html += '<table border="1" style="border-collapse: collapse; width: 100%;">';
+                    html += '<tr><th>ID</th><th>Name</th><th>Start Date</th><th>End Date</th><th>Status</th></tr>';
+                    series.forEach(s => {
+                        html += `<tr>
+                            <td>${s.id}</td>
+                            <td>${s.series_name}</td>
+                            <td>${new Date(s.start_date).toLocaleDateString()}</td>
+                            <td>${new Date(s.end_date).toLocaleDateString()}</td>
+                            <td>${s.status}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                } else {
+                    html += '<p>No series found.</p>';
+                }
+                
+                document.getElementById('result').innerHTML = html;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <h3 style="color: red;">Error loading series:</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        // Load series on page load
+        loadSeries();
+    </script>
+</body>
+</html>

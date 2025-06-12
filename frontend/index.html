@@ -1,0 +1,337 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cricket Companion</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏏</text></svg>">
+</head>
+<body data-theme="dark">
+    <!-- Login Page -->
+    <div id="loginPage" class="login-page">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>🏏 Cricket Companion</h1>
+                <p>Please login to continue</p>
+            </div>
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter password">
+                </div>
+                <button type="submit" class="login-btn" onclick="handleLoginClick(event)">Login</button>
+                <div class="login-info">
+                    <p><strong>Default Credentials:</strong></p>
+                    <p>Username: <code>admin</code></p>
+                    <p>Password: <code>cricket123</code></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application (hidden initially) -->
+    <div id="mainApp" class="container" style="display: none;">
+        <!-- Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="logo" id="appLogo" style="cursor:pointer;">Cricket Companion</div>
+            <div class="user-info">
+                <span id="welcomeUser">Welcome, User!</span>
+                <button class="logout-btn" onclick="logout(); return false;">Logout</button>
+            </div>
+            <div class="nav-item active" data-page="home">
+                <i>🏠</i> Home
+            </div>
+            <div class="nav-item" data-page="teams">
+                <i>👥</i> Teams
+            </div>
+            <div class="nav-item" data-page="players">
+                <i>🏃</i> Players
+            </div>
+            <div class="nav-item" data-page="series">
+                <i>📊</i> Series
+            </div>
+            <div class="nav-item" data-page="matches">
+                <i>🏏</i> Matches
+            </div>
+            <div class="nav-item" data-page="scorecards">
+                <i>📋</i> Scorecards
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content" id="mainContent">
+            <header class="header">
+                <button class="mobile-toggle" id="mobileToggle">☰</button>
+                <div class="user-info hidden" id="userInfo">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <span id="userName">User</span>
+                    <button class="logout-btn" onclick="logout(); return false;">Logout</button>
+                </div>
+                <div>
+                    <label class="theme-switch" id="themeToggle">
+                      <input type="checkbox" class="theme-switch__checkbox" id="themeCheckbox">
+                      <div class="theme-switch__container">
+                        <div class="theme-switch__clouds"></div>
+                        <div class="theme-switch__stars-container">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 55" fill="none">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M135.831 3.00688C135.055 3.85027 134.111 4.29946 133 4.35447C134.111 4.40947 135.055 4.85867 135.831 5.71123C136.607 6.55462 136.996 7.56303 136.996 8.72727C136.996 7.95722 137.172 7.25134 137.525 6.59129C137.886 5.93124 138.372 5.39954 138.98 5.00535C139.598 4.60199 140.268 4.39114 141 4.35447C139.88 4.2903 138.936 3.85027 138.16 3.00688C137.384 2.16348 136.996 1.16425 136.996 0C136.996 1.16425 136.607 2.16348 135.831 3.00688ZM31 23.3545C32.1114 23.2995 33.0551 22.8503 33.8313 22.0069C34.6075 21.1635 34.9956 20.1642 34.9956 19C34.9956 20.1642 35.3837 21.1635 36.1599 22.0069C36.9361 22.8503 37.8798 23.2903 39 23.3545C38.2679 23.3911 37.5976 23.602 36.9802 24.0053C36.3716 24.3995 35.8864 24.9312 35.5248 25.5913C35.172 26.2513 34.9956 26.9572 34.9956 27.7273C34.9956 26.563 34.6075 25.5546 33.8313 24.7112C33.0551 23.8587 32.1114 23.4095 31 23.3545ZM0 36.3545C1.11136 36.2995 2.05513 35.8503 2.83131 35.0069C3.6075 34.1635 3.99559 33.1642 3.99559 32C3.99559 33.1642 4.38368 34.1635 5.15987 35.0069C5.93605 35.8503 6.87982 36.2903 8 36.3545C7.26792 36.3911 6.59757 36.602 5.98015 37.0053C5.37155 37.3995 4.88644 37.9312 4.52481 38.5913C4.172 39.2513 3.99559 39.9572 3.99559 40.7273C3.99559 39.563 3.6075 38.5546 2.83131 37.7112C2.05513 36.8587 1.11136 36.4095 0 36.3545ZM56.8313 24.0069C56.0551 24.8503 55.1114 25.2995 54 25.3545C55.1114 25.4095 56.0551 25.8587 56.8313 26.7112C57.6075 27.5546 57.9956 28.563 57.9956 29.7273C57.9956 28.9572 58.172 28.2513 58.5248 27.5913C58.8864 26.9312 59.3716 26.3995 59.9802 26.0053C60.5976 25.602 61.2679 25.3911 62 25.3545C60.8798 25.2903 59.9361 24.8503 59.1599 24.0069C58.3837 23.1635 57.9956 22.1642 57.9956 21C57.9956 22.1642 57.6075 23.1635 56.8313 24.0069ZM81 25.3545C82.1114 25.2995 83.0551 24.8503 83.8313 24.0069C84.6075 23.1635 84.9956 22.1642 84.9956 21C84.9956 22.1642 85.3837 23.1635 86.1599 24.0069C86.9361 24.8503 87.8798 25.2903 89 25.3545C88.2679 25.3911 87.5976 25.602 86.9802 26.0053C86.3716 26.3995 85.8864 26.9312 85.5248 27.5913C85.172 28.2513 84.9956 28.9572 84.9956 29.7273C84.9956 28.563 84.6075 27.5546 83.8313 26.7112C83.0551 25.8587 82.1114 25.4095 81 25.3545ZM136 36.3545C137.111 36.2995 138.055 35.8503 138.831 35.0069C139.607 34.1635 139.996 33.1642 139.996 32C139.996 33.1642 140.384 34.1635 141.16 35.0069C141.936 35.8503 142.88 36.2903 144 36.3545C143.268 36.3911 142.598 36.602 141.98 37.0053C141.372 37.3995 140.886 37.9312 140.525 38.5913C140.172 39.2513 139.996 39.9572 139.996 40.7273C139.996 39.563 139.607 38.5546 138.831 37.7112C138.055 36.8587 137.111 36.4095 136 36.3545ZM101.831 49.0069C101.055 49.8503 100.111 50.2995 99 50.3545C100.111 50.4095 101.055 50.8587 101.831 51.7112C102.607 52.5546 102.996 53.563 102.996 54.7273C102.996 53.9572 103.172 53.2513 103.525 52.5913C103.886 51.9312 104.372 51.3995 104.98 51.0053C105.598 50.602 106.268 50.3911 107 50.3545C105.88 50.2903 104.936 49.8503 104.16 49.0069C103.384 48.1635 102.996 47.1642 102.996 46C102.996 47.1642 102.607 48.1635 101.831 49.0069Z" fill="currentColor"></path>
+                          </svg>
+                        </div>
+                        <div class="theme-switch__circle-container">
+                          <div class="theme-switch__sun-moon-container">
+                            <div class="theme-switch__moon">
+                              <div class="theme-switch__spot"></div>
+                              <div class="theme-switch__spot"></div>
+                              <div class="theme-switch__spot"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </label>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div id="pageContent">
+                <!-- Home Page -->
+                <div id="homePage" class="page">
+                    <section class="hero-section">
+                        <div class="hero-content">
+                            <h1>Welcome to Cricket Companion!</h1>
+                            <p>Your ultimate portal for exploring cricket teams, players, series, match details, and AI-powered summaries.</p>
+                            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                                <button class="btn" onclick="showPage('teams')">Explore Teams →</button>
+                                <button class="btn" style="background: var(--warning-color);" onclick="showComingSoonAlert()">🚀 Try Match Summarizer</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <span class="feature-icon">👥</span>
+                            <h3>Team Overviews</h3>
+                            <p>Discover cricket teams, their coaches, and captains.</p>
+                            <button class="btn" onclick="showPage('teams')" style="margin-top: 1rem;">Learn More →</button>
+                        </div>
+                        <div class="feature-card">
+                            <span class="feature-icon">🏃</span>
+                            <h3>Player Profiles</h3>
+                            <p>Get to know players, their roles, and career details.</p>
+                            <button class="btn" onclick="showPage('players')" style="margin-top: 1rem;">Learn More →</button>
+                        </div>
+                        <div class="feature-card">
+                            <span class="feature-icon">📊</span>
+                            <h3>Series Tracking</h3>
+                            <p>Follow ongoing and upcoming cricket series.</p>
+                            <button class="btn" onclick="showPage('series')" style="margin-top: 1rem;">Learn More →</button>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 3rem;">
+                        <h2>About This App</h2>
+                        <p>Cricket Companion is a Node.js application designed to provide a rich user experience for cricket enthusiasts. It leverages modern web technologies and AI to deliver comprehensive cricket information. Please note that this version uses mock data for demonstration purposes. The backend API and database integration as specified in the initial proposal (Express.js, SQL) are not part of this Next.js scaffold and would need to be implemented separately.</p>
+                        <p style="margin-top: 1rem; opacity: 0.8; font-size: 0.9rem;">© 2025 Cricket Companion. All rights reserved. | Designed by: Chandan, Srihari, Gagan</p>
+                    </div>
+                </div>
+
+                <!-- Teams Page -->
+                <div id="teamsPage" class="page hidden">
+                    <div class="card">
+                        <h2>Teams Management</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+                            <div>
+                                <input type="text" id="teamSearch" placeholder="Search teams..." style="padding: 0.5rem; border-radius: 8px; border: 2px solid var(--hover-color); background: var(--primary-color); color: var(--text-light);">
+                            </div>
+                            <button class="btn" onclick="showAddTeamForm()">+ Add New Team</button>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table id="teamsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Team Name</th>
+                                        <th>Coach</th>
+                                        <th>Captain</th>
+                                        <th>Players</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="teamsTableBody">
+                                    <!-- Teams will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Players Page -->
+                <div id="playersPage" class="page hidden">
+                    <div class="card">
+                        <h2>Players Management</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+                            <div>
+                                <input type="text" id="playerSearch" placeholder="Search players..." style="padding: 0.5rem; border-radius: 8px; border: 2px solid var(--hover-color); background: var(--primary-color); color: var(--text-light);">
+                            </div>
+                            <button class="btn" onclick="showAddPlayerForm()">+ Add New Player</button>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table id="playersTable">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Age</th>
+                                        <th>Role</th>
+                                        <th>Team</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="playersTableBody">
+                                    <!-- Players will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Series Page -->
+                <div id="seriesPage" class="page hidden">
+                    <div class="card">
+                        <h2>Series Management</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+                            <div>
+                                <input type="text" id="seriesSearch" placeholder="Search series..." style="padding: 0.5rem; border-radius: 8px; border: 2px solid var(--hover-color); background: var(--primary-color); color: var(--text-light);">
+                            </div>
+                            <button class="btn" onclick="showAddSeriesForm()">+ Add New Series</button>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table id="seriesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Series Name</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Status</th>
+                                        <th>Matches</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="seriesTableBody">
+                                    <!-- Series will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Matches Page -->
+                <div id="matchesPage" class="page hidden">
+                    <div class="card">
+                        <h2>Matches Management</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+                            <div>
+                                <input type="text" id="matchSearch" placeholder="Search matches..." style="padding: 0.5rem; border-radius: 8px; border: 2px solid var(--hover-color); background: var(--primary-color); color: var(--text-light);">
+                            </div>
+                            <button class="btn" onclick="showAddMatchForm()">+ Add New Match</button>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table id="matchesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Match</th>
+                                        <th>Series</th>
+                                        <th>Date</th>
+                                        <th>Venue</th>
+                                        <th>Winner</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="matchesTableBody">
+                                    <!-- Matches will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scorecards Page -->
+                <div id="scorecardsPage" class="page hidden">
+                    <div class="card">
+                        <h2>Scorecards Management</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+                            <div>
+                                <input type="text" id="scorecardSearch" placeholder="Search scorecards..." style="padding: 0.5rem; border-radius: 8px; border: 2px solid var(--hover-color); background: var(--primary-color); color: var(--text-light);">
+                            </div>
+                            <button class="btn" onclick="showAddScorecardForm()">+ Add New Scorecard</button>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table id="scorecardsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Player</th>
+                                        <th>Match</th>
+                                        <th>Runs Scored</th>
+                                        <th>Balls Faced</th>
+                                        <th>Wickets Taken</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="scorecardsTableBody">
+                                    <!-- Scorecards will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="hideLogin()">&times;</span>
+            <h2 style="margin-bottom: 1.5rem; text-align: center;">Login to Cricket Companion</h2>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">Login</button>
+            </form>
+            <p style="text-align: center; margin-top: 1rem; opacity: 0.8;">
+                Demo credentials: admin/admin123
+            </p>
+        </div>
+    </div>
+
+    <!-- Add/Edit Forms Modal -->
+    <div id="formModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close" onclick="hideFormModal()">&times;</span>
+            <div id="formContent">
+                <!-- Dynamic form content will be inserted here -->
+            </div>
+        </div>
+    </div>
+    </div> <!-- End of mainApp -->
+
+    <script src="search.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+
+        

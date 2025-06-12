@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Cricket API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; margin: 10px 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #result { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Cricket API Test Page</h1>
+    <p>Test the Cricket Companion API endpoints:</p>
+    
+    <button onclick="testPlayers()">Test Players API</button>
+    <button onclick="testTeams()">Test Teams API</button>
+    <button onclick="testSeries()">Test Series API</button>
+    <button onclick="testMatches()">Test Matches API</button>
+    <button onclick="testScorecards()">Test Scorecards API</button>
+    
+    <div id="result">Click a button above to test the API endpoints...</div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5000/api';
+
+        async function testPlayers() {
+            await testEndpoint('/players', 'Players');
+        }
+
+        async function testTeams() {
+            await testEndpoint('/teams', 'Teams');
+        }
+
+        async function testSeries() {
+            await testEndpoint('/series', 'Series');
+        }
+
+        async function testMatches() {
+            await testEndpoint('/matches', 'Matches');
+        }
+
+        async function testScorecards() {
+            await testEndpoint('/scorecards', 'Scorecards');
+        }
+
+        async function testEndpoint(endpoint, name) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<p>Testing ${name} API...</p>`;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <h3 class="success">${name} API - Success!</h3>
+                        <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                        <p><strong>Found:</strong> ${data.length} ${name.toLowerCase()}</p>
+                        <h4>Response Data:</h4>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `
+                        <h3 class="error">${name} API - Error!</h3>
+                        <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                        <p><strong>Error:</strong> ${errorText}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3 class="error">${name} API - Network Error!</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>Make sure the server is running on http://localhost:5000</p>
+                `;
+            }
+        }
+
+        // Test server connection on page load
+        window.onload = async function() {
+            try {
+                const response = await fetch('http://localhost:5000');
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = `
+                        <p class="success">✅ Server is running on http://localhost:5000</p>
+                        <p>Click a button above to test the API endpoints...</p>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <p class="error">❌ Cannot connect to server at http://localhost:5000</p>
+                    <p>Please make sure the server is running by executing: <code>npm start</code></p>
+                `;
+            }
+        };
+    </script>
+</body>
+</html>
