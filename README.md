@@ -163,8 +163,8 @@ Open a Pull Request
 This project is licensed under the ISC License.
 
 👥 Authors
-Chandan
-Srihari
+Chandan,
+Srihari,
 Gagan
 🙏 Acknowledgments
 Built with modern web technologies
