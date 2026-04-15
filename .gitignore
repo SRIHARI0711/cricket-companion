@@ -1,0 +1,27 @@
+# 🔒 Environment and config files
+.env
+.env.local
+.env.production
+config.js
+db.config.js
+
+# 🗂️ Folders to ignore
+node_modules/
+dist/
+build/
+logs/
+example-folder/
+
+# 🛠️ OS and IDE-specific files
+# 🛠️ OS and IDE-specific files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.iml
+
+# 🧪 Log and debug files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
