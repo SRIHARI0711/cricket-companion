@@ -25,3 +25,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+#image files
+api.png
+ipl_data_loader_report.png
