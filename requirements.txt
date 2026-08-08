@@ -11,3 +11,9 @@ seaborn>=0.13.2
 sqlalchemy>=2.0.0
 nbformat>=5.10.0
 nbconvert>=7.16.0
+
+# ── Phase 2 · ML Service (install when ready) ──────────────────────────────
+# xgboost>=2.0.0
+# scikit-learn>=1.5.0
+# fastapi>=0.111.0
+# uvicorn>=0.30.0
