@@ -18,7 +18,7 @@ connection.connect(err => {
   }
 });
 
-// Test the connection
+// Testing the connection
 connection.query('SELECT 1 as test', (err, results) => {
   if (err) {
     console.error('Database test query error:', err);

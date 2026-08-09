@@ -648,7 +648,7 @@ def main():
         for tbl in ("ipl_batting_stats", "ipl_bowling_stats"):
             cur2.execute(f"SELECT COUNT(*) FROM {tbl}")
             (n,) = cur2.fetchone()
-            log.info(f"  {tbl:<24}: {n:>7,} rows")
+            log.info(f"{tbl:<24}: {n:>7,} rows")
         cur2.close()
         conn2.close()
     except Exception:
