@@ -199,8 +199,9 @@ def check_sqlalchemy() -> bool:
 
     try:
         from sqlalchemy import create_engine, text
+        from urllib.parse import quote_plus
         user = os.getenv("DB_USER", "root")
-        pw   = os.getenv("DB_PASSWORD", "")
+        pw   = quote_plus(os.getenv("DB_PASSWORD", ""))  # encodes @ → %40, safe in URLs
         host = os.getenv("DB_HOST", "localhost")
         port = os.getenv("DB_PORT", "3306")
         db   = os.getenv("DB_NAME", "cricket_companion")
