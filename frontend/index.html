@@ -7,6 +7,7 @@
     <title>Cricket Companion</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏏</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body data-theme="dark">
     <!-- Login Page -->
@@ -61,6 +62,9 @@
             </div>
             <div class="nav-item" data-page="scorecards">
                 <i>📋</i> Scorecards
+            </div>
+            <div class="nav-item" data-page="analytics">
+                <i>📈</i> Analytics
             </div>
         </nav>
 
@@ -289,6 +293,129 @@
                                     <!-- Scorecards will be populated here -->
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Page -->
+                <div id="analyticsPage" class="page hidden">
+                    <div class="analytics-header" style="margin-bottom: 2rem;">
+                        <h2>📈 Analytics & Insights Dashboard</h2>
+                        <p style="opacity: 0.8;">Explore player career performance, team win records, AI player clusters, and match win predictions.</p>
+                    </div>
+
+                    <div class="analytics-grid">
+                        <!-- Section 1: Player Stats Chart -->
+                        <div class="card analytics-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                                <h3>🏃 Player Performance & Form Stats</h3>
+                                <select id="analyticsPlayerSelect" class="form-control" style="padding: 0.5rem 1rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color); min-width: 200px;">
+                                    <option value="">Select a Player...</option>
+                                </select>
+                            </div>
+                            <div id="playerStatsBadges" class="stats-badges-container" style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+                                <div class="stat-badge"><span>Matches:</span> <strong id="badgeMatches">-</strong></div>
+                                <div class="stat-badge"><span>Total Runs:</span> <strong id="badgeRuns">-</strong></div>
+                                <div class="stat-badge"><span>Batting Avg:</span> <strong id="badgeAvg">-</strong></div>
+                                <div class="stat-badge"><span>Strike Rate:</span> <strong id="badgeSR">-</strong></div>
+                                <div class="stat-badge"><span>Wickets:</span> <strong id="badgeWickets">-</strong></div>
+                                <div class="stat-badge"><span>Form Score:</span> <strong id="badgeFormScore">-</strong></div>
+                                <div class="stat-badge"><span>Trend:</span> <strong id="badgeFormTrend">-</strong></div>
+                            </div>
+                            <div class="chart-container" style="position: relative; height: 320px;">
+                                <canvas id="playerStatsChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Team Win Rate Chart -->
+                        <div class="card analytics-card">
+                            <div style="margin-bottom: 1.5rem;">
+                                <h3>🏆 Team Win Rate Comparison</h3>
+                                <p style="opacity: 0.75; font-size: 0.9rem;">Historical win percentages across all tracked cricket matches.</p>
+                            </div>
+                            <div class="chart-container" style="position: relative; height: 350px;">
+                                <canvas id="teamWinRateChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Section 3: Player Clusters Scatter Plot -->
+                        <div class="card analytics-card">
+                            <div style="margin-bottom: 1.5rem;">
+                                <h3>🤖 Player Cluster Archetypes (K-Means AI)</h3>
+                                <p style="opacity: 0.75; font-size: 0.9rem;">Scatter plot mapping Strike Rate vs Total Runs colored by AI archetype cluster.</p>
+                            </div>
+                            <div class="chart-container" style="position: relative; height: 360px;">
+                                <canvas id="playerClustersScatterPlot"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Section 4: Win Predictor Form -->
+                        <div class="card analytics-card">
+                            <div style="margin-bottom: 1.5rem;">
+                                <h3>🔮 Match Win Predictor</h3>
+                                <p style="opacity: 0.75; font-size: 0.9rem;">Input 2nd innings match parameters to estimate team win probabilities using ML.</p>
+                            </div>
+                            <form id="winPredictorForm" onsubmit="handleWinPrediction(event)">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                    <div class="form-group">
+                                        <label for="predictBattingTeam">Batting Team (Chasing):</label>
+                                        <select id="predictBattingTeam" name="batting_team" required class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color);">
+                                            <option value="">Select Batting Team</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="predictBowlingTeam">Bowling Team (Defending):</label>
+                                        <select id="predictBowlingTeam" name="bowling_team" required class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color);">
+                                            <option value="">Select Bowling Team</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="predictCurrentRuns">Current Runs:</label>
+                                        <input type="number" id="predictCurrentRuns" name="current_runs" min="0" required placeholder="e.g. 120">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="predictWicketsFallen">Wickets Fallen:</label>
+                                        <input type="number" id="predictWicketsFallen" name="wickets_fallen" min="0" max="10" required placeholder="e.g. 3">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="predictOversCompleted">Overs Completed:</label>
+                                        <input type="number" step="0.1" id="predictOversCompleted" name="overs_completed" min="0.1" max="20" required placeholder="e.g. 14.2">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="predictTarget">Target Runs:</label>
+                                        <input type="number" id="predictTarget" name="target" min="1" required placeholder="e.g. 180">
+                                    </div>
+                                    <div class="form-group" style="grid-column: span 1 / -1;">
+                                        <label for="predictVenue">Match Venue:</label>
+                                        <input type="text" id="predictVenue" name="venue" required placeholder="e.g. Wankhede Stadium">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn" style="width: 100%; background: var(--accent-color); font-weight: bold; padding: 0.75rem;">⚡ Predict Match Winner</button>
+                            </form>
+
+                            <div id="predictionResult" class="prediction-result-container hidden" style="margin-top: 2rem;">
+                                <h4 style="margin-bottom: 1rem; text-align: center;" id="predictedWinnerHeading">Prediction Results</h4>
+                                <div class="probability-bars" style="display: flex; flex-direction: column; gap: 1rem;">
+                                    <div>
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                                            <span id="battingTeamProbLabel">Batting Team</span>
+                                            <strong id="battingTeamProbPct">0%</strong>
+                                        </div>
+                                        <div class="progress-bar-bg" style="background: var(--secondary-color); height: 16px; border-radius: 8px; overflow: hidden;">
+                                            <div id="battingTeamProbFill" style="background: var(--accent-color); height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                                            <span id="bowlingTeamProbLabel">Bowling Team</span>
+                                            <strong id="bowlingTeamProbPct">0%</strong>
+                                        </div>
+                                        <div class="progress-bar-bg" style="background: var(--secondary-color); height: 16px; border-radius: 8px; overflow: hidden;">
+                                            <div id="bowlingTeamProbFill" style="background: var(--warning-color); height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

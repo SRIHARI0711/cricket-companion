@@ -110,6 +110,35 @@ router.get('/player/:id/form', async (req, res) => {
 });
 
 /**
+ * @route   GET /api/analytics/team/:id/winrate
+ * @desc    Proxy team winrate request to FastAPI service
+ */
+router.get('/team/:id/winrate', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const response = await fastapiClient.get(`/team/${id}/winrate`);
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    handleProxyError(error, res, `GET /team/${req.params.id}/winrate`);
+  }
+});
+
+/**
+ * @route   GET /api/analytics/match/compare
+ * @desc    Proxy head-to-head match comparison request to FastAPI service
+ */
+router.get('/match/compare', async (req, res) => {
+  try {
+    const response = await fastapiClient.get('/match/compare', {
+      params: req.query
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    handleProxyError(error, res, 'GET /match/compare');
+  }
+});
+
+/**
  * @route   GET /api/analytics/clusters
  * @desc    Proxy player clusters request to FastAPI service
  */

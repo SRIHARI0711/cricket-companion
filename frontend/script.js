@@ -239,6 +239,9 @@ function setupThemeToggle() {
         } else {
             body.setAttribute('data-theme', 'dark');
         }
+        if (typeof updateAnalyticsChartsTheme === 'function') {
+            updateAnalyticsChartsTheme();
+        }
     });
 }
 
@@ -299,6 +302,9 @@ function showPage(pageName) {
                 break;
             case 'scorecards':
                 loadScorecards();
+                break;
+            case 'analytics':
+                loadAnalyticsPage();
                 break;
         }
     }
@@ -1549,6 +1555,443 @@ async function handleAddScorecard(event) {
     } catch (error) {
         console.error('Error adding scorecard:', error);
         showNotification(`Network error: ${error.message}`, 'error');
+    }
+}
+
+// ============ ANALYTICS FUNCTIONALITY ============
+let playerStatsChartInstance = null;
+let teamWinRateChartInstance = null;
+let playerClustersChartInstance = null;
+
+function getChartThemeColors() {
+    const theme = document.body.getAttribute('data-theme');
+    if (theme === 'light') {
+        return {
+            text: '#0f172a',
+            grid: 'rgba(15, 23, 42, 0.1)',
+            cardBg: '#ffffff'
+        };
+    }
+    return {
+        text: '#f1f5f9',
+        grid: 'rgba(241, 245, 249, 0.1)',
+        cardBg: '#475569'
+    };
+}
+
+function updateAnalyticsChartsTheme() {
+    if (playerStatsChartInstance || teamWinRateChartInstance || playerClustersChartInstance) {
+        const selectedPlayer = document.getElementById('analyticsPlayerSelect')?.value;
+        if (selectedPlayer) {
+            loadPlayerStatsAnalytics(selectedPlayer);
+        }
+        loadTeamWinRatesAnalytics();
+        loadPlayerClustersAnalytics();
+    }
+}
+
+async function loadAnalyticsPage() {
+    try {
+        // Fetch players and teams in parallel
+        const [playersRes, teamsRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/players`),
+            fetch(`${API_BASE_URL}/teams`)
+        ]);
+
+        const players = playersRes.ok ? await playersRes.json() : [];
+        const teams = teamsRes.ok ? await teamsRes.json() : [];
+
+        // Populate Player Select Dropdown
+        const playerSelect = document.getElementById('analyticsPlayerSelect');
+        if (playerSelect) {
+            playerSelect.innerHTML = '<option value="">-- Select a Player --</option>';
+            players.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.name} (${p.team || 'Free Agent'} - ${p.role})`;
+                playerSelect.appendChild(opt);
+            });
+
+            // Set up change event
+            playerSelect.onchange = (e) => {
+                if (e.target.value) {
+                    loadPlayerStatsAnalytics(e.target.value);
+                }
+            };
+
+            // Select first player by default if available
+            if (players.length > 0) {
+                playerSelect.value = players[0].id;
+                loadPlayerStatsAnalytics(players[0].id);
+            }
+        }
+
+        // Populate Predictor Team Select Dropdowns
+        const battingSelect = document.getElementById('predictBattingTeam');
+        const bowlingSelect = document.getElementById('predictBowlingTeam');
+        if (battingSelect && bowlingSelect) {
+            battingSelect.innerHTML = '<option value="">Select Batting Team</option>';
+            bowlingSelect.innerHTML = '<option value="">Select Bowling Team</option>';
+            teams.forEach(t => {
+                const bOpt = document.createElement('option');
+                bOpt.value = t.team_name;
+                bOpt.textContent = t.team_name;
+                battingSelect.appendChild(bOpt);
+
+                const wOpt = document.createElement('option');
+                wOpt.value = t.team_name;
+                wOpt.textContent = t.team_name;
+                bowlingSelect.appendChild(wOpt);
+            });
+
+            if (teams.length >= 2) {
+                battingSelect.value = teams[0].team_name;
+                bowlingSelect.value = teams[1].team_name;
+            }
+        }
+
+        // Load Section 2: Team Win Rate Chart
+        loadTeamWinRatesAnalytics();
+
+        // Load Section 3: Player Clusters Scatter Plot
+        loadPlayerClustersAnalytics();
+
+    } catch (err) {
+        console.error('Error initializing analytics page:', err);
+    }
+}
+
+// Section 1: Player Stats Chart & Badges
+async function loadPlayerStatsAnalytics(playerId) {
+    if (!playerId) return;
+
+    try {
+        const [statsRes, formRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/analytics/player/${playerId}/stats`),
+            fetch(`${API_BASE_URL}/analytics/player/${playerId}/form`)
+        ]);
+
+        const stats = statsRes.ok ? await statsRes.json() : null;
+        const form = formRes.ok ? await formRes.json() : null;
+
+        // Update Badges
+        if (stats) {
+            document.getElementById('badgeMatches').textContent = stats.matches_played ?? 0;
+            document.getElementById('badgeRuns').textContent = stats.total_runs ?? 0;
+            document.getElementById('badgeAvg').textContent = stats.batting_average ? stats.batting_average.toFixed(2) : 'N/A';
+            document.getElementById('badgeSR').textContent = stats.strike_rate ? stats.strike_rate.toFixed(2) : 'N/A';
+            document.getElementById('badgeWickets').textContent = stats.total_wickets ?? 0;
+        }
+
+        if (form) {
+            document.getElementById('badgeFormScore').textContent = form.current_form_score ?? 'N/A';
+            const trendElem = document.getElementById('badgeFormTrend');
+            trendElem.textContent = (form.form_trend || 'stable').toUpperCase();
+            if (form.form_trend === 'improving') {
+                trendElem.style.color = 'var(--success-color)';
+            } else if (form.form_trend === 'declining') {
+                trendElem.style.color = 'var(--danger-color)';
+            } else {
+                trendElem.style.color = 'var(--warning-color)';
+            }
+        }
+
+        // Chart Data
+        const canvas = document.getElementById('playerStatsChart');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const colors = getChartThemeColors();
+
+        if (playerStatsChartInstance) {
+            playerStatsChartInstance.destroy();
+        }
+
+        let labels = [];
+        let runsData = [];
+        let wicketsData = [];
+
+        if (form && form.recent_performances && form.recent_performances.length > 0) {
+            form.recent_performances.slice().reverse().forEach((perf, i) => {
+                labels.push(perf.match_date ? perf.match_date.substring(0, 10) : `Match ${i + 1}`);
+                runsData.push(perf.runs_scored);
+                wicketsData.push(perf.wickets_taken);
+            });
+        } else if (stats) {
+            labels = ['Total Runs', 'Balls Faced (x0.5)', 'Wickets (x10)'];
+            runsData = [stats.total_runs, Math.round((stats.total_balls_faced || 0) * 0.5), (stats.total_wickets || 0) * 10];
+        }
+
+        playerStatsChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Runs Scored',
+                        data: runsData,
+                        backgroundColor: '#06b6d4',
+                        borderColor: '#0284c7',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                    },
+                    {
+                        label: 'Wickets Taken',
+                        data: wicketsData,
+                        backgroundColor: '#f59e0b',
+                        borderColor: '#d97706',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: colors.text } },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, beginAtZero: true }
+                }
+            }
+        });
+
+    } catch (err) {
+        console.error('Error loading player stats analytics:', err);
+    }
+}
+
+// Section 2: Team Win Rate Chart
+async function loadTeamWinRatesAnalytics() {
+    try {
+        const teamsRes = await fetch(`${API_BASE_URL}/teams`);
+        if (!teamsRes.ok) return;
+
+        const teams = await teamsRes.json();
+        const teamWinRates = await Promise.all(
+            teams.map(async (t) => {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/analytics/team/${t.id}/winrate`);
+                    if (res.ok) {
+                        return await res.json();
+                    }
+                } catch (e) {}
+                return { team: { team_name: t.team_name }, win_rate_pct: 0, wins: 0, matches_played: 0 };
+            })
+        );
+
+        const canvas = document.getElementById('teamWinRateChart');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const colors = getChartThemeColors();
+
+        if (teamWinRateChartInstance) {
+            teamWinRateChartInstance.destroy();
+        }
+
+        const labels = teamWinRates.map(item => item.team?.team_name || 'Team');
+        const winRates = teamWinRates.map(item => item.win_rate_pct || 0);
+        const totalMatches = teamWinRates.map(item => item.matches_played || 0);
+
+        teamWinRateChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Win Rate (%)',
+                    data: winRates,
+                    backgroundColor: [
+                        '#06b6d4', '#22c55e', '#f59e0b', '#ef4444',
+                        '#8b5cf6', '#ec4899', '#3b82f6', '#14b8a6'
+                    ],
+                    borderWidth: 1,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const idx = context.dataIndex;
+                                return `Win Rate: ${context.parsed.y}% (${teamWinRates[idx]?.wins || 0}/${totalMatches[idx]} matches)`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, beginAtZero: true, max: 100 }
+                }
+            }
+        });
+
+    } catch (err) {
+        console.error('Error loading team win rate analytics:', err);
+    }
+}
+
+// Section 3: Player Clusters Scatter Plot
+async function loadPlayerClustersAnalytics() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/analytics/clusters`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const clusters = data.clusters || (Array.isArray(data) ? data : []);
+
+        const canvas = document.getElementById('playerClustersScatterPlot');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const colors = getChartThemeColors();
+
+        if (playerClustersChartInstance) {
+            playerClustersChartInstance.destroy();
+        }
+
+        // Group by Archetype Label
+        const archetypeColors = {
+            'Power Hitter': '#ef4444',
+            'Anchor Batter': '#22c55e',
+            'All-Rounder': '#06b6d4',
+            'Tailender/Bowler': '#f59e0b',
+            'Finisher': '#ec4899'
+        };
+
+        const grouped = {};
+        clusters.forEach(item => {
+            const label = item.archetype_label || `Cluster ${item.cluster_id}`;
+            if (!grouped[label]) {
+                grouped[label] = [];
+            }
+            grouped[label].push({
+                x: item.strike_rate || 0,
+                y: item.total_runs || item.batting_average || 0,
+                player_name: item.player_name,
+                archetype: label,
+                runs: item.total_runs,
+                sr: item.strike_rate
+            });
+        });
+
+        const datasets = Object.keys(grouped).map(label => ({
+            label: label,
+            data: grouped[label],
+            backgroundColor: archetypeColors[label] || '#3b82f6',
+            pointRadius: 6,
+            pointHoverRadius: 9
+        }));
+
+        playerClustersChartInstance = new Chart(ctx, {
+            type: 'scatter',
+            data: { datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: colors.text } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const pt = context.raw;
+                                return `${pt.player_name} (${pt.archetype}) - SR: ${pt.x}, Runs: ${pt.y}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Strike Rate', color: colors.text },
+                        ticks: { color: colors.text },
+                        grid: { color: colors.grid }
+                    },
+                    y: {
+                        title: { display: true, text: 'Total Runs', color: colors.text },
+                        ticks: { color: colors.text },
+                        grid: { color: colors.grid }
+                    }
+                }
+            }
+        });
+
+    } catch (err) {
+        console.error('Error loading player clusters analytics:', err);
+    }
+}
+
+// Section 4: Win Predictor Form Handler
+async function handleWinPrediction(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const batting_team = form.batting_team.value;
+    const bowling_team = form.bowling_team.value;
+    const current_runs = parseInt(form.current_runs.value);
+    const wickets_fallen = parseInt(form.wickets_fallen.value);
+    const overs_completed = parseFloat(form.overs_completed.value);
+    const target = parseInt(form.target.value);
+    const venue = form.venue.value;
+
+    if (batting_team === bowling_team) {
+        showNotification('Batting team and Bowling team must be different!', 'error');
+        return;
+    }
+
+    const payload = {
+        batting_team,
+        bowling_team,
+        current_runs,
+        wickets_fallen,
+        overs_completed,
+        target,
+        venue
+    };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/analytics/predict/win`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            showNotification(`Prediction Error: ${errData.detail || errData.message || 'Failed to calculate prediction'}`, 'error');
+            return;
+        }
+
+        const data = await response.json();
+
+        const resultDiv = document.getElementById('predictionResult');
+        resultDiv.classList.remove('hidden');
+
+        const battingPct = data.batting_team?.win_probability_pct ?? 0;
+        const bowlingPct = data.bowling_team?.win_probability_pct ?? 0;
+        const winner = data.predicted_winner || batting_team;
+
+        document.getElementById('predictedWinnerHeading').innerHTML = `🏆 Predicted Winner: <span style="color: var(--accent-color);">${winner}</span>`;
+
+        document.getElementById('battingTeamProbLabel').textContent = `${data.batting_team?.team || batting_team} (Batting)`;
+        document.getElementById('battingTeamProbPct').textContent = `${battingPct}%`;
+        document.getElementById('battingTeamProbFill').style.width = `${battingPct}%`;
+
+        document.getElementById('bowlingTeamProbLabel').textContent = `${data.bowling_team?.team || bowling_team} (Bowling)`;
+        document.getElementById('bowlingTeamProbPct').textContent = `${bowlingPct}%`;
+        document.getElementById('bowlingTeamProbFill').style.width = `${bowlingPct}%`;
+
+        showNotification(`Win prediction calculated successfully!`, 'success');
+
+    } catch (err) {
+        console.error('Error running win prediction:', err);
+        showNotification(`Network error during win prediction: ${err.message}`, 'error');
     }
 }
 
