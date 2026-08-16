@@ -106,9 +106,35 @@ class WinPredictionResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Player form predictor – GET /player/{id}/form
+# ---------------------------------------------------------------------------
+
+class MatchPerformance(BaseModel):
+    match_id: int
+    match_date: Optional[str] = Field(None, description="Match date in YYYY-MM-DD format")
+    runs_scored: int
+    balls_faced: int
+    wickets_taken: int
+
+
+class PlayerFormResponse(BaseModel):
+    player_id: int
+    player_name: str
+    matches_analyzed: int = Field(..., description="Number of recent matches analyzed (up to 5)")
+    current_form_score: float = Field(..., description="Weighted rolling form rating")
+    form_trend: str = Field(..., description="Form trend: 'improving', 'declining', or 'stable'")
+    best_recent_score: int = Field(..., description="Highest runs scored in recent matches")
+    consistency_index: float = Field(..., description="Standard deviation of recent runs (lower = more consistent)")
+    rolling_avg_runs: float = Field(..., description="Rolling average runs across recent matches")
+    rolling_avg_wickets: float = Field(..., description="Rolling average wickets across recent matches")
+    recent_performances: list[MatchPerformance] = Field(..., description="Match-by-match breakdown")
+
+
+# ---------------------------------------------------------------------------
 # Generic error wrapper
 # ---------------------------------------------------------------------------
 
 class ErrorResponse(BaseModel):
     detail: str
+
 

@@ -39,6 +39,7 @@ app = FastAPI(
         "| Method | Path | Description |\n"
         "|--------|------|-------------|\n"
         "| GET | `/player/{id}/stats` | Career batting & bowling stats for a player |\n"
+        "| GET | `/player/{id}/form` | Rolling 5-match form predictor & consistency metrics |\n"
         "| GET | `/team/{id}/winrate` | Win-rate and match record for a team |\n"
         "| GET | `/match/compare` | Head-to-head comparison between two teams |\n"
         "| POST | `/predict/win` | Predict win probability for a live match state |\n"

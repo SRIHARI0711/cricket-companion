@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Optional
 
 import joblib
+import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
 
@@ -27,6 +28,8 @@ from models import (
     WinPredictionRequest,
     WinPredictionResponse,
     TeamProbability,
+    MatchPerformance,
+    PlayerFormResponse,
 )
 
 router = APIRouter()
@@ -348,4 +351,157 @@ async def predict_win_probability(payload: WinPredictionRequest) -> WinPredictio
         predicted_winner=predicted_winner,
         match_state=payload,
     )
+
+
+# ---------------------------------------------------------------------------
+# GET /player/{id}/form
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/player/{player_id}/form",
+    response_model=PlayerFormResponse,
+    summary="Player form predictor & rolling statistics",
+    description=(
+        "Calculates 5-match rolling averages, composite form score, form trend "
+        "(improving/declining/stable), and consistency index for a player."
+    ),
+)
+async def get_player_form(player_id: int) -> PlayerFormResponse:
+    async with get_connection() as conn:
+        async with conn.cursor() as cur:
+            # 1. Fetch player metadata
+            await cur.execute(
+                "SELECT id, name, age, role, team FROM players WHERE id = %s",
+                (player_id,),
+            )
+            player_row = await cur.fetchone()
+
+    if player_row is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Player with id={player_id} not found"
+        )
+
+    player_name = player_row["name"]
+
+    # 2. Fetch scorecards joined with matches ordered by match_date DESC
+    async with get_connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT
+                    s.match_id,
+                    m.match_date,
+                    s.runs_scored,
+                    s.balls_faced,
+                    s.wickets_taken
+                FROM scorecards s
+                LEFT JOIN matches m ON s.match_id = m.id
+                WHERE s.player_id = %s
+                ORDER BY m.match_date DESC, s.id DESC
+                LIMIT 5
+                """,
+                (player_id,),
+            )
+            scorecard_rows = await cur.fetchall()
+
+    # Fallback to deliveries.csv if scorecards table has no records for this player
+    matches_data = []
+    if scorecard_rows:
+        for r in scorecard_rows:
+            date_str = r["match_date"].isoformat() if r["match_date"] else None
+            matches_data.append({
+                "match_id": r["match_id"],
+                "match_date": date_str,
+                "runs_scored": r["runs_scored"],
+                "balls_faced": r["balls_faced"],
+                "wickets_taken": r["wickets_taken"],
+            })
+    else:
+        # Fallback query from CSV if dataset is unpopulated in DB
+        csv_path = Path("ipl_data_raw") / "deliveries.csv"
+        matches_csv_path = Path("ipl_data_raw") / "matches.csv"
+        if csv_path.exists() and matches_csv_path.exists():
+            try:
+                deliveries = pd.read_csv(csv_path)
+                matches_df = pd.read_csv(matches_csv_path)
+                
+                # Filter for this player
+                p_deliv = deliveries[deliveries["batter"].str.lower() == player_name.lower()]
+                if not p_deliv.empty:
+                    merged = p_deliv.groupby("match_id").agg(
+                        runs_scored=("batsman_runs", "sum"),
+                        balls_faced=("ball", "count"),
+                    ).reset_index()
+                    merged = merged.merge(matches_df[["id", "date"]], left_on="match_id", right_on="id", how="left")
+                    merged = merged.sort_values(by="date", ascending=False).head(5)
+
+                    for _, r in merged.iterrows():
+                        matches_data.append({
+                            "match_id": int(r["match_id"]),
+                            "match_date": str(r["date"]) if pd.notna(r["date"]) else None,
+                            "runs_scored": int(r["runs_scored"]),
+                            "balls_faced": int(r["balls_faced"]),
+                            "wickets_taken": 0,
+                        })
+            except Exception:
+                pass
+
+    n_matches = len(matches_data)
+
+    if n_matches == 0:
+        return PlayerFormResponse(
+            player_id=player_id,
+            player_name=player_name,
+            matches_analyzed=0,
+            current_form_score=0.0,
+            form_trend="stable",
+            best_recent_score=0,
+            consistency_index=0.0,
+            rolling_avg_runs=0.0,
+            rolling_avg_wickets=0.0,
+            recent_performances=[],
+        )
+
+    runs_list = [m["runs_scored"] for m in matches_data]
+    wickets_list = [m["wickets_taken"] for m in matches_data]
+
+    avg_runs = float(np.mean(runs_list))
+    avg_wickets = float(np.mean(wickets_list))
+
+    current_form_score = round(avg_runs * 0.7 + avg_wickets * 15.0, 2)
+    best_recent_score = int(np.max(runs_list))
+    consistency_index = round(float(np.std(runs_list)), 2) if n_matches >= 2 else 0.0
+
+    # Trend calculation: Compare recent half vs older half
+    if n_matches >= 2:
+        split_idx = max(1, n_matches // 2)
+        recent_half_runs = np.mean(runs_list[:split_idx])
+        older_half_runs = np.mean(runs_list[split_idx:])
+        diff = recent_half_runs - older_half_runs
+
+        if diff > 5.0:
+            trend = "improving"
+        elif diff < -5.0:
+            trend = "declining"
+        else:
+            trend = "stable"
+    else:
+        trend = "stable"
+
+    performances = [MatchPerformance(**m) for m in matches_data]
+
+    return PlayerFormResponse(
+        player_id=player_id,
+        player_name=player_name,
+        matches_analyzed=n_matches,
+        current_form_score=current_form_score,
+        form_trend=trend,
+        best_recent_score=best_recent_score,
+        consistency_index=consistency_index,
+        rolling_avg_runs=round(avg_runs, 2),
+        rolling_avg_wickets=round(avg_wickets, 2),
+        recent_performances=performances,
+    )
+
 

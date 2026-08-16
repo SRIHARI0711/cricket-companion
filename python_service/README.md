@@ -131,6 +131,61 @@ curl http://localhost:8000/player/1/stats
 
 ---
 
+### Player Form Predictor & Rolling Stats
+
+```
+GET /player/{id}/form
+```
+
+Calculates 5-match rolling averages, composite form rating, form trend (`improving`, `declining`, or `stable`), best recent score, and consistency index ($\sigma_{\text{runs}}$) for a player.
+
+**Path parameters**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | integer | Player ID from the `players` table |
+
+**Example**
+
+```bash
+curl http://localhost:8000/player/1/form
+```
+
+**Response**
+
+```json
+{
+  "player_id": 1,
+  "player_name": "Rohit Sharma",
+  "matches_analyzed": 5,
+  "current_form_score": 45.5,
+  "form_trend": "improving",
+  "best_recent_score": 85,
+  "consistency_index": 22.45,
+  "rolling_avg_runs": 65.0,
+  "rolling_avg_wickets": 0.0,
+  "recent_performances": [
+    {
+      "match_id": 1,
+      "match_date": "2024-03-24",
+      "runs_scored": 85,
+      "balls_faced": 60,
+      "wickets_taken": 0
+    },
+    {
+      "match_id": 3,
+      "match_date": "2024-03-28",
+      "runs_scored": 45,
+      "balls_faced": 32,
+      "wickets_taken": 0
+    }
+  ]
+}
+```
+
+---
+
+
 ### Team Win Rate
 
 ```
