@@ -4,6 +4,66 @@ const router = express.Router();
 
 const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
 
+// Axios instance with a 5-second timeout for proxy calls
+const fastapiClient = axios.create({
+  baseURL: FASTAPI_BASE_URL,
+  timeout: 5000,
+});
+
+/**
+ * Helper function to handle errors when proxying requests to FastAPI.
+ * Gracefully returns JSON error response when FastAPI is down or fails.
+ */
+function handleProxyError(error, res, endpointName) {
+  console.error(`[Analytics Proxy Error] ${endpointName}:`, error.message);
+
+  // Case 1: FastAPI service responded with an HTTP status code (4xx, 5xx)
+  if (error.response) {
+    return res.status(error.response.status).json(error.response.data);
+  }
+
+  // Case 2: FastAPI service is unreachable / down / connection refused / timeout
+  const isConnectionError =
+    error.code === 'ECONNREFUSED' ||
+    error.code === 'ETIMEDOUT' ||
+    error.code === 'ENOTFOUND' ||
+    error.code === 'ECONNABORTED';
+
+  const statusCode = isConnectionError ? 503 : 500;
+
+  return res.status(statusCode).json({
+    error: isConnectionError ? 'Analytics Service Unavailable' : 'Analytics Proxy Error',
+    message: isConnectionError
+      ? 'The Python FastAPI analytics service is currently unreachable.'
+      : 'An unexpected error occurred while proxying request to analytics service.',
+    details: error.message,
+    code: error.code || 'SERVICE_UNREACHABLE'
+  });
+}
+
+/**
+ * @route   GET /api/analytics/health
+ * @desc    Check if the Python FastAPI analytics service is reachable
+ */
+router.get('/health', async (req, res) => {
+  try {
+    const response = await fastapiClient.get('/health', { timeout: 3000 });
+    res.status(200).json({
+      status: 'ok',
+      message: 'Python FastAPI analytics service is reachable',
+      fastapi: response.data
+    });
+  } catch (error) {
+    console.error('[Analytics Health Check Failed]:', error.message);
+    res.status(503).json({
+      status: 'down',
+      message: 'Python FastAPI analytics service is unreachable',
+      error: error.message,
+      code: error.code || 'SERVICE_DOWN'
+    });
+  }
+});
+
 /**
  * @route   GET /api/analytics/player/:id/stats
  * @desc    Proxy player career stats request to FastAPI service
@@ -11,16 +71,12 @@ const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
 router.get('/player/:id/stats', async (req, res) => {
   try {
     const { id } = req.params;
-    const response = await axios.get(`${FASTAPI_BASE_URL}/player/${id}/stats`, {
+    const response = await fastapiClient.get(`/player/${id}/stats`, {
       params: req.query
     });
     res.status(response.status).json(response.data);
   } catch (error) {
-    console.error('Error proxying player stats to FastAPI:', error.message);
-    if (error.response) {
-      return res.status(error.response.status).json(error.response.data);
-    }
-    res.status(500).json({ error: 'Failed to communicate with Analytics Service (FastAPI)' });
+    handleProxyError(error, res, `GET /player/${req.params.id}/stats`);
   }
 });
 
@@ -30,14 +86,10 @@ router.get('/player/:id/stats', async (req, res) => {
  */
 router.post('/predict/win', async (req, res) => {
   try {
-    const response = await axios.post(`${FASTAPI_BASE_URL}/predict/win`, req.body);
+    const response = await fastapiClient.post('/predict/win', req.body);
     res.status(response.status).json(response.data);
   } catch (error) {
-    console.error('Error proxying win prediction to FastAPI:', error.message);
-    if (error.response) {
-      return res.status(error.response.status).json(error.response.data);
-    }
-    res.status(500).json({ error: 'Failed to communicate with Analytics Service (FastAPI)' });
+    handleProxyError(error, res, 'POST /predict/win');
   }
 });
 
@@ -48,16 +100,12 @@ router.post('/predict/win', async (req, res) => {
 router.get('/player/:id/form', async (req, res) => {
   try {
     const { id } = req.params;
-    const response = await axios.get(`${FASTAPI_BASE_URL}/player/${id}/form`, {
+    const response = await fastapiClient.get(`/player/${id}/form`, {
       params: req.query
     });
     res.status(response.status).json(response.data);
   } catch (error) {
-    console.error('Error proxying player form to FastAPI:', error.message);
-    if (error.response) {
-      return res.status(error.response.status).json(error.response.data);
-    }
-    res.status(500).json({ error: 'Failed to communicate with Analytics Service (FastAPI)' });
+    handleProxyError(error, res, `GET /player/${req.params.id}/form`);
   }
 });
 
@@ -67,16 +115,12 @@ router.get('/player/:id/form', async (req, res) => {
  */
 router.get('/clusters', async (req, res) => {
   try {
-    const response = await axios.get(`${FASTAPI_BASE_URL}/clusters`, {
+    const response = await fastapiClient.get('/clusters', {
       params: req.query
     });
     res.status(response.status).json(response.data);
   } catch (error) {
-    console.error('Error proxying player clusters to FastAPI:', error.message);
-    if (error.response) {
-      return res.status(error.response.status).json(error.response.data);
-    }
-    res.status(500).json({ error: 'Failed to communicate with Analytics Service (FastAPI)' });
+    handleProxyError(error, res, 'GET /clusters');
   }
 });
 
