@@ -214,6 +214,70 @@ curl "http://localhost:8000/match/compare?team1=1&team2=2"
 
 ---
 
+### Win Probability Prediction
+
+```
+POST /predict/win
+```
+
+Predicts match win probability percentages for both chasing and defending teams based on the current match state.
+
+**Request Body (JSON)**
+
+| Field | Type | Validation Rules | Description |
+|-------|------|------------------|-------------|
+| `current_runs` | integer | `>= 0` | Current runs scored by chasing team |
+| `wickets_fallen` | integer | `>= 0, <= 10` | Wickets lost by chasing team |
+| `overs_completed` | float | `>= 0.0, <= 20.0` | Overs completed in 2nd innings |
+| `target` | integer | `> 0` | Target runs to win match |
+| `venue` | string | `min_length=1` | Match venue |
+| `batting_team` | string | `min_length=1` | Team batting in 2nd innings |
+| `bowling_team` | string | `min_length=1` | Team bowling in 2nd innings |
+
+**Example Request**
+
+```bash
+curl -X POST "http://localhost:8000/predict/win" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "current_runs": 120,
+       "wickets_fallen": 3,
+       "overs_completed": 14.2,
+       "target": 165,
+       "venue": "Wankhede Stadium",
+       "batting_team": "Mumbai Indians",
+       "bowling_team": "Chennai Super Kings"
+     }'
+```
+
+**Response**
+
+```json
+{
+  "batting_team": {
+    "team": "Mumbai Indians",
+    "win_probability_pct": 80.5
+  },
+  "bowling_team": {
+    "team": "Chennai Super Kings",
+    "win_probability_pct": 19.5
+  },
+  "predicted_winner": "Mumbai Indians",
+  "match_state": {
+    "current_runs": 120,
+    "wickets_fallen": 3,
+    "overs_completed": 14.2,
+    "target": 165,
+    "venue": "Wankhede Stadium",
+    "batting_team": "Mumbai Indians",
+    "bowling_team": "Chennai Super Kings"
+  }
+}
+```
+
+
+---
+
 ## Interactive API Docs
 
 Once the server is running, open these in your browser:

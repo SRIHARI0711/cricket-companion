@@ -80,8 +80,35 @@ class MatchCompareResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Win probability prediction – POST /predict/win
+# ---------------------------------------------------------------------------
+
+class WinPredictionRequest(BaseModel):
+    current_runs: int = Field(..., ge=0, description="Current runs scored by chasing team")
+    wickets_fallen: int = Field(..., ge=0, le=10, description="Wickets fallen in 2nd innings (0-10)")
+    overs_completed: float = Field(..., ge=0.0, le=20.0, description="Overs completed (0.0 to 20.0)")
+    target: int = Field(..., gt=0, description="Target runs to win")
+    venue: str = Field(..., min_length=1, description="Match venue name")
+    batting_team: str = Field(..., min_length=1, description="Team batting in 2nd innings")
+    bowling_team: str = Field(..., min_length=1, description="Team bowling in 2nd innings")
+
+
+class TeamProbability(BaseModel):
+    team: str
+    win_probability_pct: float = Field(..., description="Win probability percentage rounded to 2 decimal places")
+
+
+class WinPredictionResponse(BaseModel):
+    batting_team: TeamProbability
+    bowling_team: TeamProbability
+    predicted_winner: str
+    match_state: WinPredictionRequest
+
+
+# ---------------------------------------------------------------------------
 # Generic error wrapper
 # ---------------------------------------------------------------------------
 
 class ErrorResponse(BaseModel):
     detail: str
+

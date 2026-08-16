@@ -8,8 +8,12 @@ Tables used (from cricket_companion schema):
   teams      – id, team_name, captain, coach
 """
 
+import os
+from pathlib import Path
 from typing import Optional
 
+import joblib
+import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
 
 from database import get_connection
@@ -20,9 +24,45 @@ from models import (
     PlayerStats,
     TeamInfo,
     TeamWinRate,
+    WinPredictionRequest,
+    WinPredictionResponse,
+    TeamProbability,
 )
 
 router = APIRouter()
+
+# Model loading helper
+_model = None
+
+def get_ml_model():
+    global _model
+    if _model is None:
+        possible_paths = [
+            Path(__file__).parent / "models" / "win_probability_model.pkl",
+            Path("python_service/models/win_probability_model.pkl"),
+            Path("models/win_probability_model.pkl"),
+        ]
+        model_path = None
+        for p in possible_paths:
+            if p.exists():
+                model_path = p
+                break
+
+        if model_path is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Trained ML model (win_probability_model.pkl) not found. Run train_model.py first."
+            )
+        
+        try:
+            _model = joblib.load(model_path)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to load trained model file: {str(e)}"
+            )
+    return _model
+
 
 
 # ---------------------------------------------------------------------------
@@ -235,3 +275,77 @@ async def compare_teams(
         last_match_winner=last_winner,
         last_match_date=last_date,
     )
+
+
+# ---------------------------------------------------------------------------
+# POST /predict/win
+# ---------------------------------------------------------------------------
+
+TEAM_ALIASES = {
+    "Delhi Daredevils":            "Delhi Capitals",
+    "Deccan Chargers":             "Sunrisers Hyderabad",
+    "Pune Warriors":               "Rising Pune Supergiant",
+    "Rising Pune Supergiants":     "Rising Pune Supergiant",
+    "Kings XI Punjab":             "Punjab Kings",
+    "Royal Challengers Bangalore": "Royal Challengers Bengaluru",
+}
+
+
+def normalize_team_name(name: str) -> str:
+    return TEAM_ALIASES.get(name.strip(), name.strip())
+
+
+@router.post(
+    "/predict/win",
+    response_model=WinPredictionResponse,
+    summary="Predict match win probability",
+    description=(
+        "Accepts current 2nd innings match state (runs, wickets, overs, target, "
+        "venue, batting team, bowling team) and returns win probability percentage for both teams."
+    ),
+)
+async def predict_win_probability(payload: WinPredictionRequest) -> WinPredictionResponse:
+    if payload.batting_team.strip().lower() == payload.bowling_team.strip().lower():
+        raise HTTPException(
+            status_code=400,
+            detail="batting_team and bowling_team cannot be the same team"
+        )
+
+    model = get_ml_model()
+
+    normalized_batting = normalize_team_name(payload.batting_team)
+    normalized_bowling = normalize_team_name(payload.bowling_team)
+
+    input_df = pd.DataFrame([{
+        "current_runs": payload.current_runs,
+        "wickets_fallen": payload.wickets_fallen,
+        "overs_completed": payload.overs_completed,
+        "target": payload.target,
+        "venue": payload.venue,
+        "batting_team": normalized_batting,
+        "bowling_team": normalized_bowling,
+    }])
+
+    try:
+        # Model predict_proba returns [prob(class 0: bowling team win), prob(class 1: batting team win)]
+        probabilities = model.predict_proba(input_df)[0]
+        prob_bowling_team = float(probabilities[0])
+        prob_batting_team = float(probabilities[1])
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Prediction error: {str(e)}"
+        )
+
+    batting_win_pct = round(prob_batting_team * 100, 2)
+    bowling_win_pct = round(prob_bowling_team * 100, 2)
+
+    predicted_winner = payload.batting_team if batting_win_pct >= bowling_win_pct else payload.bowling_team
+
+    return WinPredictionResponse(
+        batting_team=TeamProbability(team=payload.batting_team, win_probability_pct=batting_win_pct),
+        bowling_team=TeamProbability(team=payload.bowling_team, win_probability_pct=bowling_win_pct),
+        predicted_winner=predicted_winner,
+        match_state=payload,
+    )
+

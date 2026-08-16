@@ -41,6 +41,7 @@ app = FastAPI(
         "| GET | `/player/{id}/stats` | Career batting & bowling stats for a player |\n"
         "| GET | `/team/{id}/winrate` | Win-rate and match record for a team |\n"
         "| GET | `/match/compare` | Head-to-head comparison between two teams |\n"
+        "| POST | `/predict/win` | Predict win probability for a live match state |\n"
     ),
     version="1.0.0",
     lifespan=lifespan,
@@ -58,7 +59,7 @@ app.add_middleware(
         "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
