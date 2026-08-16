@@ -5,6 +5,7 @@ require('dotenv').config();
 
 // Import routes
 const cricketRoutes = require('./routes/cricketRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Routes
+app.use('/api/analytics', analyticsRoutes);
 app.use('/api', cricketRoutes);
 
 // Serve frontend

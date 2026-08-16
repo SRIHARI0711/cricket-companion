@@ -505,3 +505,46 @@ async def get_player_form(player_id: int) -> PlayerFormResponse:
     )
 
 
+# ---------------------------------------------------------------------------
+# GET /clusters
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/clusters",
+    summary="Player cluster archetypes",
+    description="Returns all player cluster assignments and archetype classifications.",
+)
+async def get_clusters():
+    async with get_connection() as conn:
+        async with conn.cursor() as cur:
+            try:
+                await cur.execute(
+                    """
+                    SELECT
+                        id,
+                        player_name,
+                        cluster_id,
+                        archetype_label,
+                        innings,
+                        total_runs,
+                        strike_rate,
+                        batting_average,
+                        boundary_percentage
+                    FROM player_clusters
+                    ORDER BY total_runs DESC
+                    """
+                )
+                rows = await cur.fetchall()
+                for r in rows:
+                    if r.get("strike_rate") is not None:
+                        r["strike_rate"] = float(r["strike_rate"])
+                    if r.get("batting_average") is not None:
+                        r["batting_average"] = float(r["batting_average"])
+                    if r.get("boundary_percentage") is not None:
+                        r["boundary_percentage"] = float(r["boundary_percentage"])
+                return {"clusters": rows, "total": len(rows)}
+            except Exception as e:
+                return {"clusters": [], "total": 0, "message": str(e)}
+
+
+
