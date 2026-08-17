@@ -58,6 +58,26 @@ class TeamWinRate(BaseModel):
     win_rate_pct: float = Field(..., description="Percentage rounded to 2 decimal places")
 
 
+class VenueRecord(BaseModel):
+    venue: str
+    total_matches: int
+    wins: int
+    win_pct: float
+
+
+class TeamWinRateExtended(BaseModel):
+    team: TeamInfo
+    matches_played: int
+    wins: int
+    losses: int
+    win_rate_pct: float
+    batting_first_wins: int = 0
+    fielding_first_wins: int = 0
+    batting_first_matches: int = 0
+    fielding_first_matches: int = 0
+    venue_stats: list[VenueRecord] = []
+
+
 # ---------------------------------------------------------------------------
 # Head-to-head comparison – GET /match/compare?team1=&team2=
 # ---------------------------------------------------------------------------

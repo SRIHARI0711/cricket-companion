@@ -1862,78 +1862,217 @@ function renderPlayerVsTeamBarChart(playerStats, teamStats, colors) {
     });
 }
 
-// Section 2: Team Win Rate Chart
+// Section 2: Team Win Rate Comparison & Venue Analytics (Task 13)
+let teamWinRateHorizontalBarChartInstance = null;
+let homeAwayDoughnutChartInstance = null;
+
 async function loadTeamWinRatesAnalytics() {
     try {
-        const teamsRes = await fetch(`${API_BASE_URL}/teams`);
-        if (!teamsRes.ok) return;
+        // Single bulk request instead of N parallel requests
+        const res = await fetch(`${API_BASE_URL}/analytics/teams/winrates`);
+        if (!res.ok) return;
 
-        const teams = await teamsRes.json();
-        const teamWinRates = await Promise.all(
-            teams.map(async (t) => {
-                try {
-                    const res = await fetch(`${API_BASE_URL}/analytics/team/${t.id}/winrate`);
-                    if (res.ok) {
-                        return await res.json();
-                    }
-                } catch (e) {}
-                return { team: { team_name: t.team_name }, win_rate_pct: 0, wins: 0, matches_played: 0 };
-            })
-        );
+        const data = await res.json();
+        const teams = data.teams || [];
 
-        const canvas = document.getElementById('teamWinRateChart');
-        if (!canvas) return;
+        if (teams.length === 0) return;
 
-        const ctx = canvas.getContext('2d');
-        const colors = getChartThemeColors();
+        // 1. Render Horizontal Bar Chart (Sorted Descending)
+        renderTeamWinRateBarChart(teams);
 
-        if (teamWinRateChartInstance) {
-            teamWinRateChartInstance.destroy();
-        }
+        // 2. Populate Focus Team Dropdown
+        const teamSelect = document.getElementById('winrateTeamSelect');
+        if (teamSelect) {
+            teamSelect.innerHTML = '<option value="">-- Select Focus Team --</option>';
+            teams.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = `${t.team_name} (${t.win_rate_pct}%)`;
+                teamSelect.appendChild(opt);
+            });
 
-        const labels = teamWinRates.map(item => item.team?.team_name || 'Team');
-        const winRates = teamWinRates.map(item => item.win_rate_pct || 0);
-        const totalMatches = teamWinRates.map(item => item.matches_played || 0);
-
-        teamWinRateChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Win Rate (%)',
-                    data: winRates,
-                    backgroundColor: [
-                        '#06b6d4', '#22c55e', '#f59e0b', '#ef4444',
-                        '#8b5cf6', '#ec4899', '#3b82f6', '#14b8a6'
-                    ],
-                    borderWidth: 1,
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const idx = context.dataIndex;
-                                return `Win Rate: ${context.parsed.y}% (${teamWinRates[idx]?.wins || 0}/${totalMatches[idx]} matches)`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
-                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, beginAtZero: true, max: 100 }
-                }
+            // Load first team by default
+            if (teams.length > 0) {
+                teamSelect.value = teams[0].id;
+                await loadFocusTeamCharts(teams[0].id);
             }
-        });
+
+            teamSelect.onchange = (e) => {
+                if (e.target.value) {
+                    loadFocusTeamCharts(e.target.value);
+                }
+            };
+        }
 
     } catch (err) {
         console.error('Error loading team win rate analytics:', err);
     }
+}
+
+function renderTeamWinRateBarChart(teams) {
+    const canvas = document.getElementById('teamWinRateHorizontalBarChart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const colors = getChartThemeColors();
+
+    if (teamWinRateHorizontalBarChartInstance) {
+        teamWinRateHorizontalBarChartInstance.destroy();
+        teamWinRateHorizontalBarChartInstance = null;
+    }
+
+    teamWinRateHorizontalBarChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: teams.map(t => t.team_name),
+            datasets: [{
+                label: 'Win Rate %',
+                data: teams.map(t => t.win_rate_pct),
+                backgroundColor: teams.map(t =>
+                    t.win_rate_pct >= 70 ? '#10b981' :
+                    t.win_rate_pct >= 50 ? '#06b6d4' :
+                    t.win_rate_pct >= 35 ? '#f59e0b' : '#ef4444'
+                ),
+                borderRadius: 4,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const t = teams[ctx.dataIndex];
+                            return ` ${ctx.parsed.x}%  (${t.wins}W / ${t.matches_played} matches)`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                        color: colors.text,
+                        callback: v => `${v}%`
+                    },
+                    grid: { color: colors.grid }
+                },
+                y: {
+                    ticks: { color: colors.text },
+                    grid: { color: colors.grid }
+                }
+            }
+        }
+    });
+}
+
+async function loadFocusTeamCharts(teamId) {
+    try {
+        const res = await fetch(`${API_BASE_URL}/analytics/team/${teamId}/winrate`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        renderHomeAwayDoughnut(data);
+        renderVenueHeatmap(data.venue_stats || []);
+
+    } catch (err) {
+        console.error('Error loading focus team charts:', err);
+    }
+}
+
+function renderHomeAwayDoughnut(data) {
+    const canvas = document.getElementById('homeAwayDoughnutChart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const colors = getChartThemeColors();
+
+    if (homeAwayDoughnutChartInstance) {
+        homeAwayDoughnutChartInstance.destroy();
+        homeAwayDoughnutChartInstance = null;
+    }
+
+    const battingWins = data.batting_first_wins || 0;
+    const fieldingWins = data.fielding_first_wins || 0;
+    const battingLosses = Math.max(0, (data.batting_first_matches || 0) - battingWins);
+    const fieldingLosses = Math.max(0, (data.fielding_first_matches || 0) - fieldingWins);
+
+    homeAwayDoughnutChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: [
+                'Batting First — Won',
+                'Batting First — Lost',
+                'Fielding First — Won',
+                'Fielding First — Lost'
+            ],
+            datasets: [{
+                data: [battingWins, battingLosses, fieldingWins, fieldingLosses],
+                backgroundColor: ['#10b981', '#6ee7b7', '#06b6d4', '#a5f3fc'],
+                borderColor: colors.cardBg,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: colors.text,
+                        font: { size: 11 },
+                        padding: 10
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = total ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                            return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderVenueHeatmap(venueStats) {
+    const grid = document.getElementById('venueHeatmapGrid');
+    if (!grid) return;
+
+    if (!venueStats || venueStats.length === 0) {
+        grid.innerHTML = '<p style="opacity:0.6; font-size:0.9rem;">No venue breakdown available for this team.</p>';
+        return;
+    }
+
+    grid.innerHTML = venueStats.map(v => {
+        const cls = v.win_pct >= 70 ? 'heatmap-high'
+                  : v.win_pct >= 50 ? 'heatmap-med'
+                  : v.win_pct >= 35 ? 'heatmap-low'
+                  : 'heatmap-poor';
+
+        const shortName = v.venue.length > 22
+            ? v.venue.substring(0, 20) + '…'
+            : v.venue;
+
+        return `
+            <div class="heatmap-cell ${cls}" title="${v.venue}">
+                <span class="venue-name">${shortName}</span>
+                <span class="venue-pct">${v.win_pct}%</span>
+                <span class="venue-record">${v.wins}W / ${v.total_matches}M</span>
+            </div>
+        `;
+    }).join('');
 }
 
 // Section 3: Player Clusters Scatter Plot

@@ -25,6 +25,8 @@ from models import (
     PlayerStats,
     TeamInfo,
     TeamWinRate,
+    TeamWinRateExtended,
+    VenueRecord,
     WinPredictionRequest,
     WinPredictionResponse,
     TeamProbability,
@@ -162,18 +164,18 @@ async def get_player_stats(player_id: int) -> PlayerStats:
 
 @router.get(
     "/team/{team_id}/winrate",
-    response_model=TeamWinRate,
-    summary="Team win-rate",
+    response_model=TeamWinRateExtended,
+    summary="Team win-rate with batting/fielding first and venue breakdown",
     description=(
-        "Calculates win-rate for a team across all matches where the team "
-        "appears as team1 or team2."
+        "Calculates win-rate for a team, batting/fielding first split, and venue breakdown."
     ),
 )
-async def get_team_winrate(team_id: int) -> TeamWinRate:
+async def get_team_winrate(team_id: int) -> TeamWinRateExtended:
     team_row = await _get_team_or_404(team_id)
 
     async with get_connection() as conn:
         async with conn.cursor() as cur:
+            # Overall win stats
             await cur.execute(
                 """
                 SELECT
@@ -184,20 +186,133 @@ async def get_team_winrate(team_id: int) -> TeamWinRate:
                 """,
                 (team_id, team_id, team_id),
             )
-            row = await cur.fetchone()
+            overall = await cur.fetchone()
 
-    matches = row["matches_played"] or 0
-    wins    = int(row["wins"] or 0)
-    losses  = matches - wins
+            # Batting first (team1_id = team_id)
+            await cur.execute(
+                """
+                SELECT
+                    COUNT(*) AS batting_first_matches,
+                    SUM(winner_id = %s) AS batting_first_wins
+                FROM matches
+                WHERE team1_id = %s
+                """,
+                (team_id, team_id),
+            )
+            batting = await cur.fetchone()
+
+            # Fielding first (team2_id = team_id)
+            await cur.execute(
+                """
+                SELECT
+                    COUNT(*) AS fielding_first_matches,
+                    SUM(winner_id = %s) AS fielding_first_wins
+                FROM matches
+                WHERE team2_id = %s
+                """,
+                (team_id, team_id),
+            )
+            fielding = await cur.fetchone()
+
+            # Venue breakdown (minimum 3 matches)
+            await cur.execute(
+                """
+                SELECT
+                    venue,
+                    COUNT(*) AS total_matches,
+                    SUM(CASE WHEN winner_id = %s THEN 1 ELSE 0 END) AS wins,
+                    ROUND(
+                        SUM(CASE WHEN winner_id = %s THEN 1 ELSE 0 END) / COUNT(*) * 100, 1
+                    ) AS win_pct
+                FROM matches
+                WHERE (team1_id = %s OR team2_id = %s)
+                  AND venue IS NOT NULL AND venue != 'Unknown' AND venue != ''
+                GROUP BY venue
+                HAVING total_matches >= 3
+                ORDER BY total_matches DESC
+                LIMIT 12
+                """,
+                (team_id, team_id, team_id, team_id),
+            )
+            venue_rows = await cur.fetchall()
+
+    matches = overall["matches_played"] or 0
+    wins = int(overall["wins"] or 0)
+    losses = matches - wins
     win_pct = round(wins / matches * 100, 2) if matches > 0 else 0.0
 
-    return TeamWinRate(
+    b_wins = int(batting["batting_first_wins"] or 0) if batting else 0
+    b_matches = int(batting["batting_first_matches"] or 0) if batting else 0
+    f_wins = int(fielding["fielding_first_wins"] or 0) if fielding else 0
+    f_matches = int(fielding["fielding_first_matches"] or 0) if fielding else 0
+
+    venue_list = []
+    if venue_rows:
+        for v in venue_rows:
+            venue_list.append(VenueRecord(
+                venue=str(v["venue"]),
+                total_matches=int(v["total_matches"]),
+                wins=int(v["wins"] or 0),
+                win_pct=float(v["win_pct"] or 0.0),
+            ))
+
+    return TeamWinRateExtended(
         team=TeamInfo(**team_row),
         matches_played=matches,
         wins=wins,
         losses=losses,
         win_rate_pct=win_pct,
+        batting_first_wins=b_wins,
+        fielding_first_wins=f_wins,
+        batting_first_matches=b_matches,
+        fielding_first_matches=f_matches,
+        venue_stats=venue_list,
     )
+
+
+# ---------------------------------------------------------------------------
+# GET /teams/winrates - Bulk team winrates
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/teams/winrates",
+    summary="Bulk team win rates sorted descending",
+    description="Returns win rate summary for ALL teams in a single query.",
+)
+async def get_all_team_winrates():
+    async with get_connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT
+                    t.id,
+                    t.team_name,
+                    t.captain,
+                    t.coach,
+                    COUNT(m.id) AS matches_played,
+                    SUM(CASE WHEN m.winner_id = t.id THEN 1 ELSE 0 END) AS wins,
+                    ROUND(
+                        SUM(CASE WHEN m.winner_id = t.id THEN 1 ELSE 0 END)
+                        / NULLIF(COUNT(m.id), 0) * 100, 2
+                    ) AS win_rate_pct
+                FROM teams t
+                LEFT JOIN matches m ON m.team1_id = t.id OR m.team2_id = t.id
+                GROUP BY t.id, t.team_name, t.captain, t.coach
+                HAVING matches_played > 0
+                ORDER BY win_rate_pct DESC
+                """
+            )
+            rows = await cur.fetchall()
+
+    for r in rows:
+        if r.get("win_rate_pct") is not None:
+            r["win_rate_pct"] = float(r["win_rate_pct"])
+        else:
+            r["win_rate_pct"] = 0.0
+        r["wins"] = int(r.get("wins") or 0)
+        r["matches_played"] = int(r.get("matches_played") or 0)
+
+    return {"teams": rows}
 
 
 # ---------------------------------------------------------------------------

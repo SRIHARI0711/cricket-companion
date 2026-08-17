@@ -1000,3 +1000,71 @@ input, button {
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Team Analytics & Venue Heatmap */
+        .team-analytics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        @media (max-width: 900px) {
+            .team-analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .venue-heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 0.6rem;
+        }
+
+        .heatmap-cell {
+            padding: 0.65rem 0.5rem;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 500;
+            line-height: 1.4;
+            overflow: hidden;
+            cursor: default;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .heatmap-cell:hover {
+            transform: scale(1.04);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+        }
+
+        .heatmap-cell .venue-name {
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 0.25rem;
+            font-size: 0.7rem;
+            opacity: 0.95;
+            font-weight: 600;
+        }
+
+        .heatmap-cell .venue-pct {
+            display: block;
+            font-size: 1.1rem;
+            font-weight: 800;
+        }
+
+        .heatmap-cell .venue-record {
+            display: block;
+            font-size: 0.68rem;
+            opacity: 0.85;
+            margin-top: 0.15rem;
+        }
+
+        /* Color tiers for win percentage intensity */
+        .heatmap-high  { background: #10b981; color: #ffffff; }  /* ≥70% Green */
+        .heatmap-med   { background: #06b6d4; color: #ffffff; }  /* 50–69% Teal */
+        .heatmap-low   { background: #f59e0b; color: #ffffff; }  /* 35–49% Amber */
+        .heatmap-poor  { background: #ef4444; color: #ffffff; }  /* <35% Red */

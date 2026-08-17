@@ -124,6 +124,19 @@ router.get('/team/:id/stats', async (req, res) => {
 });
 
 /**
+ * @route   GET /api/analytics/teams/winrates
+ * @desc    Proxy bulk team winrates request to FastAPI service
+ */
+router.get('/teams/winrates', async (req, res) => {
+  try {
+    const response = await fastapiClient.get('/teams/winrates');
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    handleProxyError(error, res, 'GET /teams/winrates');
+  }
+});
+
+/**
  * @route   GET /api/analytics/team/:id/winrate
  * @desc    Proxy team winrate request to FastAPI service
  */

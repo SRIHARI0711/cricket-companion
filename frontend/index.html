@@ -340,14 +340,36 @@
                             </div>
                         </div>
 
-                        <!-- Section 2: Team Win Rate Chart -->
-                        <div class="card analytics-card">
-                            <div style="margin-bottom: 1.5rem;">
-                                <h3>🏆 Team Win Rate Comparison</h3>
-                                <p style="opacity: 0.75; font-size: 0.9rem;">Historical win percentages across all tracked cricket matches.</p>
+                        <!-- Section 2: Team Win Rate Comparison & Venue Analytics (Task 13) -->
+                        <div class="card analytics-card" style="grid-column: 1 / -1;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                                <div>
+                                    <h3 style="margin: 0;">🏆 Team Win Rate Comparison & Venue Analytics</h3>
+                                    <p style="opacity: 0.75; font-size: 0.9rem; margin-top: 0.25rem;">Overall team win rates sorted, batting vs fielding first split, and venue performance heatmap.</p>
+                                </div>
+                                <select id="winrateTeamSelect" class="form-control" style="padding: 0.5rem 1rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color); min-width: 250px;">
+                                    <option value="">-- Select Focus Team --</option>
+                                </select>
                             </div>
-                            <div class="chart-container" style="position: relative; height: 350px;">
-                                <canvas id="teamWinRateChart"></canvas>
+
+                            <!-- Horizontal Bar: All Teams Sorted -->
+                            <div class="chart-container" style="position: relative; height: 350px; margin-bottom: 1.5rem;">
+                                <h4 style="margin-bottom: 0.75rem; font-size: 0.95rem; opacity: 0.9;">📊 Team Win Rates (Sorted Descending)</h4>
+                                <canvas id="teamWinRateHorizontalBarChart"></canvas>
+                            </div>
+
+                            <!-- Doughnut + Heatmap side-by-side grid -->
+                            <div class="team-analytics-grid">
+                                <div class="chart-container" style="position: relative; height: 300px;">
+                                    <h4 style="margin-bottom: 0.75rem; font-size: 0.95rem; opacity: 0.9;">🍩 Batting First vs Fielding First Wins</h4>
+                                    <canvas id="homeAwayDoughnutChart"></canvas>
+                                </div>
+                                <div>
+                                    <h4 style="margin-bottom: 0.75rem; font-size: 0.95rem; opacity: 0.9;">🏟️ Venue Performance Heatmap</h4>
+                                    <div id="venueHeatmapGrid" class="venue-heatmap-grid">
+                                        <p style="opacity: 0.6; font-size: 0.9rem;">Select a team to view venue breakdown.</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
