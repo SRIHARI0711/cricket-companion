@@ -4,10 +4,10 @@ const router = express.Router();
 
 const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
 
-// Axios instance with a 5-second timeout for proxy calls
+// Axios instance with a 15-second timeout for proxy calls (allows cold-start ML predictions)
 const fastapiClient = axios.create({
   baseURL: FASTAPI_BASE_URL,
-  timeout: 5000,
+  timeout: 15000,
 });
 
 /**
@@ -177,6 +177,19 @@ router.get('/clusters', async (req, res) => {
     res.status(response.status).json(response.data);
   } catch (error) {
     handleProxyError(error, res, 'GET /clusters');
+  }
+});
+
+/**
+ * @route   GET /api/analytics/venues
+ * @desc    Proxy match venues request to FastAPI service
+ */
+router.get('/venues', async (req, res) => {
+  try {
+    const response = await fastapiClient.get('/venues');
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    handleProxyError(error, res, 'GET /venues');
   }
 });
 

@@ -732,4 +732,44 @@ async def get_clusters():
                 return {"clusters": [], "total": 0, "message": str(e)}
 
 
+# ---------------------------------------------------------------------------
+# GET /venues - Distinct match venues from training dataset or MySQL fallback
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/venues",
+    summary="Distinct match venues from training data",
+    description="Returns distinct match venues from CSV training data for exact ML model alignment, with DB fallback.",
+)
+async def get_venues():
+    from pathlib import Path
+    import pandas as pd
+
+    matches_path = Path("ipl_data_raw") / "matches.csv"
+    if matches_path.exists():
+        try:
+            matches = pd.read_csv(matches_path)
+            venues = sorted([
+                str(v).strip() for v in matches["venue"].dropna().unique().tolist()
+                if str(v).strip() not in ("", "Unknown")
+            ])
+            return {"venues": venues, "source": "csv"}
+        except Exception:
+            pass
+
+    # Fallback to MySQL database
+    async with get_connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT DISTINCT venue
+                FROM matches
+                WHERE venue IS NOT NULL AND venue != 'Unknown' AND venue != ''
+                ORDER BY venue ASC
+                """
+            )
+            rows = await cur.fetchall()
+            return {"venues": [str(r["venue"]) for r in rows], "source": "db"}
+
+
 

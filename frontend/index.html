@@ -384,12 +384,19 @@
                             </div>
                         </div>
 
-                        <!-- Section 4: Win Predictor Form -->
+                        <!-- Section 4: Win Predictor Form (Task 14) -->
                         <div class="card analytics-card">
-                            <div style="margin-bottom: 1.5rem;">
-                                <h3>🔮 Match Win Predictor</h3>
-                                <p style="opacity: 0.75; font-size: 0.9rem;">Input 2nd innings match parameters to estimate team win probabilities using ML.</p>
+                            <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                                <div>
+                                    <h3 style="margin: 0;">🔮 Match Win Predictor</h3>
+                                    <p style="opacity: 0.75; font-size: 0.9rem; margin-top: 0.25rem;">Input match state — ML prediction recalculates live in real-time.</p>
+                                </div>
+                                <div id="liveStatusIndicator" class="live-status-indicator status-idle">
+                                    <span class="pulse-dot"></span>
+                                    <span id="liveStatusText">Enter match details to begin</span>
+                                </div>
                             </div>
+
                             <form id="winPredictorForm" onsubmit="handleWinPrediction(event)">
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                                     <div class="form-group">
@@ -402,6 +409,12 @@
                                         <label for="predictBowlingTeam">Bowling Team (Defending):</label>
                                         <select id="predictBowlingTeam" name="bowling_team" required class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color);">
                                             <option value="">Select Bowling Team</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="predictVenue">Match Venue:</label>
+                                        <select id="predictVenue" name="venue" required class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color);">
+                                            <option value="">Loading venues...</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
@@ -420,24 +433,26 @@
                                         <label for="predictTarget">Target Runs:</label>
                                         <input type="number" id="predictTarget" name="target" min="1" required placeholder="e.g. 180">
                                     </div>
-                                    <div class="form-group" style="grid-column: span 1 / -1;">
-                                        <label for="predictVenue">Match Venue:</label>
-                                        <input type="text" id="predictVenue" name="venue" required placeholder="e.g. Wankhede Stadium">
-                                    </div>
                                 </div>
                                 <button type="submit" class="btn" style="width: 100%; background: var(--accent-color); font-weight: bold; padding: 0.75rem;">⚡ Predict Match Winner</button>
                             </form>
 
                             <div id="predictionResult" class="prediction-result-container hidden" style="margin-top: 2rem;">
                                 <h4 style="margin-bottom: 1rem; text-align: center;" id="predictedWinnerHeading">Prediction Results</h4>
-                                <div class="probability-bars" style="display: flex; flex-direction: column; gap: 1rem;">
+
+                                <!-- Chart.js Gauge Canvas -->
+                                <div class="prediction-gauge-wrapper">
+                                    <canvas id="winPredictorGaugeChart"></canvas>
+                                </div>
+
+                                <div class="probability-bars" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
                                     <div>
                                         <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
                                             <span id="battingTeamProbLabel">Batting Team</span>
                                             <strong id="battingTeamProbPct">0%</strong>
                                         </div>
-                                        <div class="progress-bar-bg" style="background: var(--secondary-color); height: 16px; border-radius: 8px; overflow: hidden;">
-                                            <div id="battingTeamProbFill" style="background: var(--accent-color); height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                        <div class="progress-bar-bg" style="background: var(--secondary-color); height: 14px; border-radius: 8px; overflow: hidden;">
+                                            <div id="battingTeamProbFill" style="background: #10b981; height: 100%; width: 0%; transition: width 0.6s ease;"></div>
                                         </div>
                                     </div>
                                     <div>
@@ -445,11 +460,13 @@
                                             <span id="bowlingTeamProbLabel">Bowling Team</span>
                                             <strong id="bowlingTeamProbPct">0%</strong>
                                         </div>
-                                        <div class="progress-bar-bg" style="background: var(--secondary-color); height: 16px; border-radius: 8px; overflow: hidden;">
-                                            <div id="bowlingTeamProbFill" style="background: var(--warning-color); height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                        <div class="progress-bar-bg" style="background: var(--secondary-color); height: 14px; border-radius: 8px; overflow: hidden;">
+                                            <div id="bowlingTeamProbFill" style="background: #f59e0b; height: 100%; width: 0%; transition: width 0.6s ease;"></div>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
                             </div>
                         </div>
                     </div>

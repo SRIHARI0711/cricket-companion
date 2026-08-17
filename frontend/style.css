@@ -1068,3 +1068,50 @@ input, button {
         .heatmap-med   { background: #06b6d4; color: #ffffff; }  /* 50–69% Teal */
         .heatmap-low   { background: #f59e0b; color: #ffffff; }  /* 35–49% Amber */
         .heatmap-poor  { background: #ef4444; color: #ffffff; }  /* <35% Red */
+
+        /* Win Predictor Live Status Indicator */
+        .live-status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.82rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .status-idle    { background: var(--hover-color); color: var(--text-light); opacity: 0.75; }
+        .status-loading { background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.4); }
+        .status-success { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4); }
+        .status-error   { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
+        .status-invalid { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            flex-shrink: 0;
+        }
+
+        .status-loading .pulse-dot {
+            animation: pulseDot 1.2s ease-in-out infinite;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%      { opacity: 0.3; transform: scale(0.7); }
+        }
+
+        /* Prediction Gauge Wrapper */
+        .prediction-gauge-wrapper {
+            position: relative;
+            max-width: 320px;
+            margin: 0 auto;
+        }
+
+        .prediction-gauge-wrapper canvas {
+            display: block;
+            width: 100% !important;
+        }

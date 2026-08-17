@@ -1651,6 +1651,10 @@ async function loadAnalyticsPage() {
             }
         }
 
+        // Load Venues List for Win Predictor (Task 14)
+        await loadVenuesList();
+        setupWinPredictorListeners();
+
         // Load Section 2: Team Win Rate Chart
         loadTeamWinRatesAnalytics();
 
@@ -2164,72 +2168,260 @@ async function loadPlayerClustersAnalytics() {
     }
 }
 
-// Section 4: Win Predictor Form Handler
-async function handleWinPrediction(event) {
-    event.preventDefault();
+// Section 4: Win Predictor Form & Real-time Gauge (Task 14)
+let winPredictorGaugeInstance = null;
+let predictionDebounceTimer = null;
+let predictionAbortController = null;
 
-    const form = event.target;
-    const batting_team = form.batting_team.value;
-    const bowling_team = form.bowling_team.value;
-    const current_runs = parseInt(form.current_runs.value);
-    const wickets_fallen = parseInt(form.wickets_fallen.value);
-    const overs_completed = parseFloat(form.overs_completed.value);
-    const target = parseInt(form.target.value);
-    const venue = form.venue.value;
+// ── Inline Chart.js Plugin for Semi-Circle Gauge Center Text ─────────────────
+const gaugeCenterTextPlugin = {
+    id: 'gaugeCenterText',
+    beforeDraw(chart) {
+        if (!chart.config.options.plugins?.gaugeCenterText?.enabled) return;
 
-    if (batting_team === bowling_team) {
-        showNotification('Batting team and Bowling team must be different!', 'error');
+        const { ctx, chartArea: { top, left, right, bottom } } = chart;
+        const cx = (left + right) / 2;
+        const cy = bottom - (bottom - top) * 0.12;
+
+        const { winner, pct } = chart.config.options.plugins.gaugeCenterText;
+        const colors = getChartThemeColors();
+
+        ctx.save();
+
+        // Winner team label
+        ctx.font = 'bold 12px Segoe UI, sans-serif';
+        ctx.fillStyle = colors.text;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(winner || '—', cx, cy - 14);
+
+        // Win Probability %
+        ctx.font = 'bold 22px Segoe UI, sans-serif';
+        ctx.fillStyle = '#06b6d4';
+        ctx.fillText(pct || '', cx, cy + 12);
+
+        ctx.restore();
+    }
+};
+
+if (typeof Chart !== 'undefined') {
+    Chart.register(gaugeCenterTextPlugin);
+}
+
+// Populate Match Venues Dropdown (sourced from CSV for exact ML model vocabulary match)
+async function loadVenuesList() {
+    const select = document.getElementById('predictVenue');
+    if (!select) return;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/analytics/venues`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const venues = data.venues || [];
+
+        select.innerHTML = '<option value="">Select Match Venue...</option>'
+            + venues.map(v => `<option value="${v}">${v}</option>`).join('');
+
+        if (venues.length > 0) {
+            select.value = venues[0];
+        }
+    } catch (err) {
+        console.error('Failed to load venues list:', err);
+        select.innerHTML = '<option value="">Venues unavailable</option>';
+    }
+}
+
+// 5-State Status Indicator Helper
+function setLiveStatus(state, text) {
+    const el = document.getElementById('liveStatusIndicator');
+    const txt = document.getElementById('liveStatusText');
+    if (!el || !txt) return;
+
+    el.className = `live-status-indicator status-${state}`;
+    txt.textContent = text;
+}
+
+// Form validation check before sending API request
+function isWinPredictorValid() {
+    const runsInput = document.getElementById('predictCurrentRuns')?.value;
+    const wicketsInput = document.getElementById('predictWicketsFallen')?.value;
+    const oversInput = document.getElementById('predictOversCompleted')?.value;
+    const targetInput = document.getElementById('predictTarget')?.value;
+    const bat = document.getElementById('predictBattingTeam')?.value;
+    const bowl = document.getElementById('predictBowlingTeam')?.value;
+    const venue = document.getElementById('predictVenue')?.value;
+
+    if (!bat || !bowl || !venue) return false;
+    if (bat === bowl) return false;
+
+    const runs = parseInt(runsInput);
+    const wickets = parseInt(wicketsInput);
+    const overs = parseFloat(oversInput);
+    const target = parseInt(targetInput);
+
+    if (isNaN(runs) || runs < 0) return false;
+    if (isNaN(wickets) || wickets < 0 || wickets > 10) return false;
+    if (isNaN(overs) || overs <= 0 || overs > 20) return false;
+    if (isNaN(target) || target <= 0) return false;
+    if (runs >= target) return false;
+
+    return true;
+}
+
+// Debounced input handler for live updates
+function onWinPredictorInput() {
+    clearTimeout(predictionDebounceTimer);
+
+    if (!isWinPredictorValid()) {
+        setLiveStatus('invalid', 'Enter valid inputs to calculate');
         return;
     }
 
+    setLiveStatus('loading', 'Calculating live prediction...');
+    predictionDebounceTimer = setTimeout(triggerLivePrediction, 400);
+}
+
+// Execute live prediction request with AbortController to prevent race conditions
+async function triggerLivePrediction() {
+    if (!isWinPredictorValid()) return;
+
+    if (predictionAbortController) {
+        predictionAbortController.abort();
+    }
+    predictionAbortController = new AbortController();
+
     const payload = {
-        batting_team,
-        bowling_team,
-        current_runs,
-        wickets_fallen,
-        overs_completed,
-        target,
-        venue
+        batting_team: document.getElementById('predictBattingTeam').value,
+        bowling_team: document.getElementById('predictBowlingTeam').value,
+        venue: document.getElementById('predictVenue').value,
+        current_runs: parseInt(document.getElementById('predictCurrentRuns').value),
+        wickets_fallen: parseInt(document.getElementById('predictWicketsFallen').value),
+        overs_completed: parseFloat(document.getElementById('predictOversCompleted').value),
+        target: parseInt(document.getElementById('predictTarget').value),
     };
 
     try {
         const response = await fetch(`${API_BASE_URL}/analytics/predict/win`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: predictionAbortController.signal
         });
 
         if (!response.ok) {
-            const errData = await response.json();
-            showNotification(`Prediction Error: ${errData.detail || errData.message || 'Failed to calculate prediction'}`, 'error');
-            return;
+            throw new Error(`HTTP ${response.status}`);
         }
 
         const data = await response.json();
 
-        const resultDiv = document.getElementById('predictionResult');
-        resultDiv.classList.remove('hidden');
-
         const battingPct = data.batting_team?.win_probability_pct ?? 0;
         const bowlingPct = data.bowling_team?.win_probability_pct ?? 0;
-        const winner = data.predicted_winner || batting_team;
+        const winner = data.predicted_winner || data.batting_team?.team;
 
-        document.getElementById('predictedWinnerHeading').innerHTML = `🏆 Predicted Winner: <span style="color: var(--accent-color);">${winner}</span>`;
+        renderWinPredictorGauge(
+            data.batting_team?.team || payload.batting_team,
+            data.bowling_team?.team || payload.bowling_team,
+            battingPct,
+            bowlingPct,
+            winner
+        );
 
-        document.getElementById('battingTeamProbLabel').textContent = `${data.batting_team?.team || batting_team} (Batting)`;
-        document.getElementById('battingTeamProbPct').textContent = `${battingPct}%`;
-        document.getElementById('battingTeamProbFill').style.width = `${battingPct}%`;
-
-        document.getElementById('bowlingTeamProbLabel').textContent = `${data.bowling_team?.team || bowling_team} (Bowling)`;
-        document.getElementById('bowlingTeamProbPct').textContent = `${bowlingPct}%`;
-        document.getElementById('bowlingTeamProbFill').style.width = `${bowlingPct}%`;
-
-        showNotification(`Win prediction calculated successfully!`, 'success');
+        setLiveStatus('success', 'Live Prediction Active');
 
     } catch (err) {
-        console.error('Error running win prediction:', err);
-        showNotification(`Network error during win prediction: ${err.message}`, 'error');
+        if (err.name === 'AbortError') return;
+        console.error('Win prediction error:', err);
+        setLiveStatus('error', 'Service unavailable');
     }
+}
+
+// Render animated Chart.js semi-circle gauge chart
+function renderWinPredictorGauge(battingTeam, bowlingTeam, battingPct, bowlingPct, winner) {
+    if (winPredictorGaugeInstance) {
+        winPredictorGaugeInstance.destroy();
+        winPredictorGaugeInstance = null;
+    }
+
+    const canvas = document.getElementById('winPredictorGaugeChart');
+    if (!canvas) return;
+
+    document.getElementById('predictionResult').classList.remove('hidden');
+
+    document.getElementById('predictedWinnerHeading').innerHTML = `🏆 Predicted Winner: <span style="color: var(--accent-color);">${winner}</span>`;
+    document.getElementById('battingTeamProbLabel').textContent = `${battingTeam} (Batting)`;
+    document.getElementById('battingTeamProbPct').textContent = `${battingPct}%`;
+    document.getElementById('battingTeamProbFill').style.width = `${battingPct}%`;
+
+    document.getElementById('bowlingTeamProbLabel').textContent = `${bowlingTeam} (Bowling)`;
+    document.getElementById('bowlingTeamProbPct').textContent = `${bowlingPct}%`;
+    document.getElementById('bowlingTeamProbFill').style.width = `${bowlingPct}%`;
+
+    const colors = getChartThemeColors();
+    const winningPct = Math.max(battingPct, bowlingPct);
+    const winnerShort = winner.length > 18 ? winner.substring(0, 16) + '…' : winner;
+
+    winPredictorGaugeInstance = new Chart(canvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: [battingTeam, bowlingTeam],
+            datasets: [{
+                data: [battingPct, bowlingPct],
+                backgroundColor: ['#10b981', '#f59e0b'],
+                borderWidth: 0,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            circumference: 180,
+            rotation: -90,
+            cutout: '75%',
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: { duration: 600, easing: 'easeOutQuart' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` ${ctx.label}: ${ctx.parsed}%`
+                    }
+                },
+                gaugeCenterText: {
+                    enabled: true,
+                    winner: winnerShort,
+                    pct: `${winningPct}%`
+                }
+            }
+        }
+    });
+}
+
+// Wire input/change event listeners across form inputs
+function setupWinPredictorListeners() {
+    const fields = [
+        'predictBattingTeam', 'predictBowlingTeam', 'predictVenue',
+        'predictCurrentRuns', 'predictWicketsFallen',
+        'predictOversCompleted', 'predictTarget'
+    ];
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.removeEventListener('input', onWinPredictorInput);
+            el.removeEventListener('change', onWinPredictorInput);
+            el.addEventListener('input', onWinPredictorInput);
+            el.addEventListener('change', onWinPredictorInput);
+        }
+    });
+}
+
+// Form submit event handler
+async function handleWinPrediction(event) {
+    event.preventDefault();
+    if (!isWinPredictorValid()) {
+        showNotification('Please fill in all form inputs correctly!', 'error');
+        return;
+    }
+    triggerLivePrediction();
 }
 
 
