@@ -110,6 +110,20 @@ router.get('/player/:id/form', async (req, res) => {
 });
 
 /**
+ * @route   GET /api/analytics/team/:id/stats
+ * @desc    Proxy team stats request to FastAPI service
+ */
+router.get('/team/:id/stats', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const response = await fastapiClient.get(`/team/${id}/stats`);
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    handleProxyError(error, res, `GET /team/${req.params.id}/stats`);
+  }
+});
+
+/**
  * @route   GET /api/analytics/team/:id/winrate
  * @desc    Proxy team winrate request to FastAPI service
  */

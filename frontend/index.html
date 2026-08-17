@@ -305,11 +305,16 @@
                     </div>
 
                     <div class="analytics-grid">
-                        <!-- Section 1: Player Stats Chart -->
-                        <div class="card analytics-card">
+                        <!-- Section 1: Player Performance & Form Stats -->
+                        <div class="card analytics-card" style="grid-column: 1 / -1;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                                <h3>🏃 Player Performance & Form Stats</h3>
-                                <select id="analyticsPlayerSelect" class="form-control" style="padding: 0.5rem 1rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color); min-width: 200px;">
+                                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                                    <h3 style="margin: 0;">🏃 Player Performance & Form Stats</h3>
+                                    <div id="formTrendBadgeContainer" class="form-trend-badge badge-stable">
+                                        FORM TREND: <strong id="formTrendText">STABLE</strong>
+                                    </div>
+                                </div>
+                                <select id="analyticsPlayerSelect" class="form-control" style="padding: 0.5rem 1rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color); min-width: 250px;">
                                     <option value="">Select a Player...</option>
                                 </select>
                             </div>
@@ -320,10 +325,18 @@
                                 <div class="stat-badge"><span>Strike Rate:</span> <strong id="badgeSR">-</strong></div>
                                 <div class="stat-badge"><span>Wickets:</span> <strong id="badgeWickets">-</strong></div>
                                 <div class="stat-badge"><span>Form Score:</span> <strong id="badgeFormScore">-</strong></div>
-                                <div class="stat-badge"><span>Trend:</span> <strong id="badgeFormTrend">-</strong></div>
                             </div>
-                            <div class="chart-container" style="position: relative; height: 320px;">
-                                <canvas id="playerStatsChart"></canvas>
+                            
+                            <!-- Player Charts Grid: Line Chart (10 Matches) + Bar Chart (Player vs Team Avg) -->
+                            <div class="player-charts-grid">
+                                <div class="chart-container" style="position: relative; height: 320px;">
+                                    <h4 style="margin-bottom: 0.75rem; font-size: 0.95rem; opacity: 0.9;">📈 Last 10 Matches - Runs Trend</h4>
+                                    <canvas id="playerRunsLineChart"></canvas>
+                                </div>
+                                <div class="chart-container" style="position: relative; height: 320px;">
+                                    <h4 style="margin-bottom: 0.75rem; font-size: 0.95rem; opacity: 0.9;">📊 Player vs Team Average Comparison</h4>
+                                    <canvas id="playerVsTeamBarChart"></canvas>
+                                </div>
                             </div>
                         </div>
 

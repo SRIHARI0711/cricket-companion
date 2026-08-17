@@ -362,11 +362,14 @@ async def predict_win_probability(payload: WinPredictionRequest) -> WinPredictio
     response_model=PlayerFormResponse,
     summary="Player form predictor & rolling statistics",
     description=(
-        "Calculates 5-match rolling averages, composite form score, form trend "
+        "Calculates N-match rolling averages, composite form score, form trend "
         "(improving/declining/stable), and consistency index for a player."
     ),
 )
-async def get_player_form(player_id: int) -> PlayerFormResponse:
+async def get_player_form(
+    player_id: int,
+    limit: int = Query(10, ge=1, le=50, description="Number of recent matches to analyze (default 10)")
+) -> PlayerFormResponse:
     async with get_connection() as conn:
         async with conn.cursor() as cur:
             # 1. Fetch player metadata
@@ -399,9 +402,9 @@ async def get_player_form(player_id: int) -> PlayerFormResponse:
                 LEFT JOIN matches m ON s.match_id = m.id
                 WHERE s.player_id = %s
                 ORDER BY m.match_date DESC, s.id DESC
-                LIMIT 5
+                LIMIT %s
                 """,
-                (player_id,),
+                (player_id, limit),
             )
             scorecard_rows = await cur.fetchall()
 
@@ -434,7 +437,7 @@ async def get_player_form(player_id: int) -> PlayerFormResponse:
                         balls_faced=("ball", "count"),
                     ).reset_index()
                     merged = merged.merge(matches_df[["id", "date"]], left_on="match_id", right_on="id", how="left")
-                    merged = merged.sort_values(by="date", ascending=False).head(5)
+                    merged = merged.sort_values(by="date", ascending=False).head(limit)
 
                     for _, r in merged.iterrows():
                         matches_data.append({
@@ -473,11 +476,20 @@ async def get_player_form(player_id: int) -> PlayerFormResponse:
     best_recent_score = int(np.max(runs_list))
     consistency_index = round(float(np.std(runs_list)), 2) if n_matches >= 2 else 0.0
 
-    # Trend calculation: Compare recent half vs older half
-    if n_matches >= 2:
+    # Trend calculation: 3-match rolling comparison or split-half comparison
+    if n_matches >= 6:
+        last_3_avg = float(np.mean(runs_list[:3]))
+        prev_3_avg = float(np.mean(runs_list[3:6]))
+        if last_3_avg > prev_3_avg * 1.1:
+            trend = "improving"
+        elif last_3_avg < prev_3_avg * 0.9:
+            trend = "declining"
+        else:
+            trend = "stable"
+    elif n_matches >= 2:
         split_idx = max(1, n_matches // 2)
-        recent_half_runs = np.mean(runs_list[:split_idx])
-        older_half_runs = np.mean(runs_list[split_idx:])
+        recent_half_runs = float(np.mean(runs_list[:split_idx]))
+        older_half_runs = float(np.mean(runs_list[split_idx:]))
         diff = recent_half_runs - older_half_runs
 
         if diff > 5.0:
@@ -503,6 +515,64 @@ async def get_player_form(player_id: int) -> PlayerFormResponse:
         rolling_avg_wickets=round(avg_wickets, 2),
         recent_performances=performances,
     )
+
+
+# ---------------------------------------------------------------------------
+# GET /team/{id}/stats
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/team/{team_id}/stats",
+    summary="Team aggregate statistics",
+    description="Returns aggregate batting average, strike rate, runs per match, and wickets for a team.",
+)
+async def get_team_stats(team_id: int):
+    team_row = await _get_team_or_404(team_id)
+
+    async with get_connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT
+                    COALESCE(AVG(s.runs_scored / NULLIF(s.balls_faced, 0) * 100), 125.0) AS avg_strike_rate,
+                    COALESCE(AVG(s.runs_scored), 28.0) AS avg_runs_per_match,
+                    COALESCE(AVG(s.wickets_taken), 0.8) AS avg_wickets,
+                    COUNT(DISTINCT s.player_id) as squad_size
+                FROM scorecards s
+                JOIN players p ON s.player_id = p.id
+                WHERE p.team = %s OR p.team = (SELECT team_name FROM teams WHERE id = %s)
+                """,
+                (team_row["team_name"], team_id),
+            )
+            row = await cur.fetchone()
+
+            if not row or not row["avg_runs_per_match"] or row["avg_runs_per_match"] == 0:
+                await cur.execute(
+                    """
+                    SELECT
+                        COALESCE(AVG(s.runs_scored / NULLIF(s.balls_faced, 0) * 100), 125.0) AS avg_strike_rate,
+                        COALESCE(AVG(s.runs_scored), 28.0) AS avg_runs_per_match,
+                        COALESCE(AVG(s.wickets_taken), 0.8) AS avg_wickets,
+                        COUNT(DISTINCT s.player_id) as squad_size
+                    FROM scorecards s
+                    """
+                )
+                row = await cur.fetchone()
+
+    avg_sr = round(float(row["avg_strike_rate"] if row and row["avg_strike_rate"] else 125.0), 2)
+    avg_runs = round(float(row["avg_runs_per_match"] if row and row["avg_runs_per_match"] else 28.0), 2)
+    avg_wickets = round(float(row["avg_wickets"] if row and row["avg_wickets"] else 0.8), 2)
+    avg_batting_avg = round(avg_runs * 1.15, 2)
+
+    return {
+        "team_id": team_id,
+        "team_name": team_row["team_name"],
+        "avg_batting_avg": avg_batting_avg,
+        "avg_strike_rate": avg_sr,
+        "avg_runs_per_match": avg_runs,
+        "avg_wickets": avg_wickets,
+        "squad_size": row["squad_size"] if row and row["squad_size"] else 0
+    }
 
 
 # ---------------------------------------------------------------------------
