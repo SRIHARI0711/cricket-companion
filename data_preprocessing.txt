@@ -1,0 +1,139 @@
+Data preprocessing happens at several stages across the pipeline:
+raw data loading/cleaning (load_ipl_data.py, ipl_transform.py),
+feature engineering for clustering (cluster_players.py), and
+feature engineering for the win-probability model (train_model.py).
+
+Details
+
+1. Raw Data Loading & Normalization (load_ipl_data.py)
+
+Raw Kaggle CSVs (matches.csv, deliveries.csv) are cleaned with
+helper functions:
+
+- clean_str: Fills missing/blank values with defaults.
+- clean_int: Performs safe integer coercion.
+- normalize_team: Collapses historical franchise renames such as
+  "Delhi Daredevils" → "Delhi Capitals".
+
+These functions are applied when loading matches into the DB,
+including normalizing team names and parsing dates before insertion.
+
+2. Feature Engineering Layer (ipl_transform.py)
+
+This script performs the main cleaning and feature-engineering pass:
+
+- Missing-value handling
+- Team-name standardization
+- Date parsing
+- Derived statistical calculations such as:
+  - Strike rate
+  - Economy rate
+  - Batting average
+  - Bowling average
+  - Boundary percentage
+
+clean_matches parses dates, normalizes team columns, and fills
+unknown values/defaults.
+
+build_batting_stats aggregates per-match and then per-season
+batting figures. It computes:
+
+- strike_rate
+- batting_average
+- boundary_percentage
+
+build_bowling_stats performs analogous processing for bowling
+metrics, including:
+
+- Economy rate
+- Bowling average
+- Bowling strike rate
+- Bowling hauls
+
+The resulting statistics are upserted into:
+
+- ipl_batting_stats
+- ipl_bowling_stats
+
+These MySQL tables are then used downstream by
+cluster_players.py.
+
+3. Clustering Preprocessing (cluster_players.py)
+
+This is the pipeline directly referenced in the wiki page.
+
+load_data() first attempts to retrieve pre-aggregated statistics
+from the ipl_batting_stats MySQL table using
+fetch_batting_data_from_db.
+
+If the database is empty or unavailable, it falls back to
+aggregating the raw deliveries.csv file using
+fetch_batting_data_from_csv.
+
+The loaded data then undergoes additional preprocessing:
+
+- MySQL Decimal values are converted to floats.
+- strike_rate is derived from raw counts.
+- average is derived from raw counts.
+- boundary_percentage is derived from raw counts.
+
+In main(), the following features are standardized using
+StandardScaler before K-Means clustering:
+
+- runs
+- strike_rate
+- average
+- boundary_percentage
+- innings
+
+4. Win-Probability Model Preprocessing (train_model.py)
+
+A separate but related preprocessing pipeline,
+load_and_preprocess_data(), prepares the data for the XGBoost
+win-probability predictor.
+
+The preprocessing steps include:
+
+- Normalizing team names using normalize_team.
+- Computing the 1st-innings total to derive the target.
+- Merging the target into the match data.
+- Filtering specifically to 2nd-innings deliveries.
+- Labeling each delivery as a win or loss.
+- Computing cumulative current_runs.
+- Computing cumulative wickets_fallen.
+- Computing overs_completed per delivery.
+- Selecting the final feature columns.
+- Dropping rows containing missing values.
+
+Notes
+
+These are four distinct but connected preprocessing stages:
+
+load_ipl_data.py
+    ↓
+Database ingestion
+
+ipl_transform.py
+    ↓
+Feature-engineered analytics tables
+
+cluster_players.py
+    ↓
+Clustering-specific preprocessing and scaling
+
+train_model.py
+    ↓
+ML feature preparation for win prediction
+
+The four stages share the normalize_team concept, but the
+implementation is maintained separately in each file.
+
+cluster_players.py is the file directly tied to the wiki page
+you're currently viewing. Therefore, its preprocessing steps are
+the most directly relevant to "Player Clustering":
+
+- DB/CSV fallback loading
+- Derived statistical feature computation
+- Feature selection
+- StandardScaler preprocessing
+- K-Means clustering
