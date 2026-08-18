@@ -1,0 +1,87 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # =========================================================================
+  # 1. Node.js Express Server Health Check Job
+  # =========================================================================
+  node-health-check:
+    name: Node.js Dependencies & Express Server Health Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Node.js Dependencies
+        run: npm ci || npm install
+
+      - name: Start Express Server in Background
+        run: |
+          node backend/server.js &
+          sleep 3
+
+      - name: Verify Express Server Health Check
+        run: |
+          curl --fail --retry 3 --retry-delay 2 http://localhost:5000/ || exit 1
+
+  # =========================================================================
+  # 2. Python FastAPI Pytest Suite Job
+  # =========================================================================
+  python-fastapi-tests:
+    name: Python Dependencies & FastAPI Pytest Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python Environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r python_service/requirements.txt
+
+      - name: Run Pytest Suite on FastAPI Endpoints
+        run: |
+          pytest tests/ -v
+
+  # =========================================================================
+  # 3. Docker Compose Build Verification Job
+  # =========================================================================
+  docker-compose-build:
+    name: Docker Compose Build Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create Environment File for CI
+        run: |
+          cp .env.example .env
+
+      - name: Build Docker Compose Services
+        run: |
+          docker compose build --parallel

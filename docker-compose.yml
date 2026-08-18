@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # =========================================================================
+  # 1. MySQL Database Service
+  # =========================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: cricket_mysql
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-cricket_companion}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD:-rootpassword} || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - cricket_network
+
+  # =========================================================================
+  # 2. Python FastAPI Analytics Service
+  # =========================================================================
+  python_service:
+    build:
+      context: ./python_service
+      dockerfile: Dockerfile
+    container_name: cricket_python_service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_HOST: mysql
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-rootpassword}
+      DB_NAME: ${DB_NAME:-cricket_companion}
+      DB_PORT: 3306
+      HOST: 0.0.0.0
+      PORT: 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cricket_network
+
+  # =========================================================================
+  # 3. Node.js Express Backend & Frontend Web Application
+  # =========================================================================
+  node_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cricket_node_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_HOST: mysql
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-rootpassword}
+      DB_NAME: ${DB_NAME:-cricket_companion}
+      DB_PORT: 3306
+      PORT: 5000
+      FASTAPI_URL: http://python_service:8000
+    ports:
+      - "5000:5000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      python_service:
+        condition: service_started
+    networks:
+      - cricket_network
+
+# =============================================================================
+# Volumes & Networks
+# =============================================================================
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  cricket_network:
+    driver: bridge
