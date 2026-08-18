@@ -2079,7 +2079,7 @@ function renderVenueHeatmap(venueStats) {
     }).join('');
 }
 
-// Section 3: Player Clusters Scatter Plot
+// Section 3: Player Clusters Scatter Plot (Task 15)
 async function loadPlayerClustersAnalytics() {
     try {
         const res = await fetch(`${API_BASE_URL}/analytics/clusters`);
@@ -2098,14 +2098,21 @@ async function loadPlayerClustersAnalytics() {
             playerClustersChartInstance.destroy();
         }
 
-        // Group by Archetype Label
+        // Archetype color map
         const archetypeColors = {
+            'Anchor / Elite Top-Order': '#22c55e',          // Emerald Green
+            'Aggressive Opener / Power Hitter': '#ef4444',  // Red
+            'Middle-Order Finisher': '#ec4899',             // Pink
+            'Middle-Order Accumulator': '#3b82f6',          // Royal Blue
+            'Lower-Order / Tailender': '#f59e0b',           // Amber Gold
             'Power Hitter': '#ef4444',
             'Anchor Batter': '#22c55e',
             'All-Rounder': '#06b6d4',
             'Tailender/Bowler': '#f59e0b',
             'Finisher': '#ec4899'
         };
+
+        const fallbackColors = ['#8b5cf6', '#06b6d4', '#14b8a6', '#6366f1', '#a855f7'];
 
         const grouped = {};
         clusters.forEach(item => {
@@ -2114,21 +2121,25 @@ async function loadPlayerClustersAnalytics() {
                 grouped[label] = [];
             }
             grouped[label].push({
-                x: item.strike_rate || 0,
-                y: item.total_runs || item.batting_average || 0,
-                player_name: item.player_name,
+                x: parseFloat(item.strike_rate || 0),
+                y: parseFloat(item.batting_average || 0),
+                player_name: item.player_name || 'Unknown',
                 archetype: label,
-                runs: item.total_runs,
-                sr: item.strike_rate
+                runs: item.total_runs || 0,
+                innings: item.innings || 0,
+                boundary_pct: item.boundary_percentage || 0
             });
         });
 
-        const datasets = Object.keys(grouped).map(label => ({
+        const labels = Object.keys(grouped);
+        const datasets = labels.map((label, idx) => ({
             label: label,
             data: grouped[label],
-            backgroundColor: archetypeColors[label] || '#3b82f6',
-            pointRadius: 6,
-            pointHoverRadius: 9
+            backgroundColor: archetypeColors[label] || fallbackColors[idx % fallbackColors.length],
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointHoverBorderWidth: 2,
+            pointHoverBorderColor: colors.text
         }));
 
         playerClustersChartInstance = new Chart(ctx, {
@@ -2138,24 +2149,60 @@ async function loadPlayerClustersAnalytics() {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { labels: { color: colors.text } },
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: colors.text,
+                            usePointStyle: true,
+                            font: { size: 12, weight: 'bold' },
+                            padding: 15
+                        }
+                    },
                     tooltip: {
+                        backgroundColor: colors.cardBg || 'rgba(15, 23, 42, 0.9)',
+                        titleColor: colors.text,
+                        bodyColor: colors.text,
+                        borderColor: colors.grid,
+                        borderWidth: 1,
+                        padding: 12,
                         callbacks: {
+                            title: function(tooltipItems) {
+                                if (!tooltipItems.length) return '';
+                                const pt = tooltipItems[0].raw;
+                                return `🏏 ${pt.player_name}`;
+                            },
                             label: function(context) {
                                 const pt = context.raw;
-                                return `${pt.player_name} (${pt.archetype}) - SR: ${pt.x}, Runs: ${pt.y}`;
+                                return [
+                                    `🏷️ Archetype: ${pt.archetype}`,
+                                    `⚡ Strike Rate: ${pt.x.toFixed(2)}`,
+                                    `📊 Batting Avg: ${pt.y.toFixed(2)}`,
+                                    `🏏 Total Runs: ${pt.runs} (${pt.innings} inn)`,
+                                    `💥 Boundary %: ${pt.boundary_pct}%`
+                                ];
                             }
                         }
                     }
                 },
                 scales: {
                     x: {
-                        title: { display: true, text: 'Strike Rate', color: colors.text },
+                        title: {
+                            display: true,
+                            text: 'Strike Rate (SR)',
+                            color: colors.text,
+                            font: { weight: 'bold' }
+                        },
                         ticks: { color: colors.text },
                         grid: { color: colors.grid }
                     },
                     y: {
-                        title: { display: true, text: 'Total Runs', color: colors.text },
+                        title: {
+                            display: true,
+                            text: 'Batting Average',
+                            color: colors.text,
+                            font: { weight: 'bold' }
+                        },
                         ticks: { color: colors.text },
                         grid: { color: colors.grid }
                     }
