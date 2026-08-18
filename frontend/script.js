@@ -1591,9 +1591,63 @@ function updateAnalyticsChartsTheme() {
     }
 }
 
+function showAnalyticsOfflineBanner(container) {
+    if (!container) return;
+    const existingBanner = document.getElementById('analytics-offline-banner');
+    if (existingBanner) return;
+    const banner = document.createElement('div');
+    banner.id = 'analytics-offline-banner';
+    banner.style.cssText = [
+        'display:flex', 'align-items:center', 'gap:14px',
+        'background:rgba(239,68,68,0.08)', 'border:1.5px solid rgba(239,68,68,0.35)',
+        'border-radius:12px', 'padding:18px 22px', 'margin-bottom:24px',
+        'animation:fadeIn 0.3s ease'
+    ].join(';');
+    banner.innerHTML = `
+        <span style="font-size:2rem;">⚠️</span>
+        <div>
+            <strong style="color:#ef4444;font-size:1rem;">Analytics Service Offline</strong>
+            <p style="margin:4px 0 6px;font-size:0.875rem;opacity:0.85;">
+                The Python FastAPI analytics service is not running. Charts and predictions will not load.
+            </p>
+            <code style="background:rgba(0,0,0,0.2);border-radius:6px;padding:4px 10px;font-size:0.8rem;letter-spacing:0.02em;">
+                npm run start:python
+            </code>
+            <span style="font-size:0.8rem;opacity:0.7;margin-left:10px;">— run this in a new terminal, then refresh.</span>
+        </div>
+    `;
+    container.insertBefore(banner, container.firstChild);
+}
+
+function removeAnalyticsOfflineBanner() {
+    const banner = document.getElementById('analytics-offline-banner');
+    if (banner) banner.remove();
+}
+
 async function loadAnalyticsPage() {
     try {
-        // Fetch players and teams in parallel
+        // --- Step 1: Check if analytics (FastAPI) service is reachable ---
+        const analyticsSection = document.getElementById('analytics') ||
+                                 document.querySelector('.analytics-section') ||
+                                 document.querySelector('[data-page="analytics"]') ||
+                                 document.querySelector('main') ||
+                                 document.body;
+
+        let analyticsOnline = false;
+        try {
+            const healthRes = await fetch(`${API_BASE_URL}/analytics/health`, { signal: AbortSignal.timeout(4000) });
+            analyticsOnline = healthRes.ok;
+        } catch (e) {
+            analyticsOnline = false;
+        }
+
+        if (!analyticsOnline) {
+            showAnalyticsOfflineBanner(analyticsSection);
+        } else {
+            removeAnalyticsOfflineBanner();
+        }
+
+        // --- Step 2: Always load players/teams from Node (these work without FastAPI) ---
         const [playersRes, teamsRes] = await Promise.all([
             fetch(`${API_BASE_URL}/players`),
             fetch(`${API_BASE_URL}/teams`)
@@ -1613,15 +1667,11 @@ async function loadAnalyticsPage() {
                 playerSelect.appendChild(opt);
             });
 
-            // Set up change event
             playerSelect.onchange = (e) => {
-                if (e.target.value) {
-                    loadPlayerStatsAnalytics(e.target.value);
-                }
+                if (e.target.value) loadPlayerStatsAnalytics(e.target.value);
             };
 
-            // Select first player by default if available
-            if (players.length > 0) {
+            if (players.length > 0 && analyticsOnline) {
                 playerSelect.value = players[0].id;
                 loadPlayerStatsAnalytics(players[0].id);
             }
@@ -1651,15 +1701,15 @@ async function loadAnalyticsPage() {
             }
         }
 
-        // Load Venues List for Win Predictor (Task 14)
-        await loadVenuesList();
-        setupWinPredictorListeners();
-
-        // Load Section 2: Team Win Rate Chart
-        loadTeamWinRatesAnalytics();
-
-        // Load Section 3: Player Clusters Scatter Plot
-        loadPlayerClustersAnalytics();
+        // Load analytics charts only if FastAPI is online
+        if (analyticsOnline) {
+            await loadVenuesList();
+            setupWinPredictorListeners();
+            loadTeamWinRatesAnalytics();
+            loadPlayerClustersAnalytics();
+        } else {
+            setupWinPredictorListeners();
+        }
 
     } catch (err) {
         console.error('Error initializing analytics page:', err);
@@ -1675,6 +1725,14 @@ async function loadPlayerStatsAnalytics(playerId) {
             fetch(`${API_BASE_URL}/analytics/player/${playerId}/stats`),
             fetch(`${API_BASE_URL}/analytics/player/${playerId}/form?limit=10`)
         ]);
+
+        // If analytics service is offline, show banner and bail
+        if (statsRes.status === 503 || formRes.status === 503) {
+            const analyticsSection = document.getElementById('analytics') ||
+                                     document.querySelector('main') || document.body;
+            showAnalyticsOfflineBanner(analyticsSection);
+            return;
+        }
 
         const stats = statsRes.ok ? await statsRes.json() : null;
         const form = formRes.ok ? await formRes.json() : null;

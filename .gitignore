@@ -30,3 +30,8 @@ yarn-error.log*
 api.png
 ipl_data_loader_report.png
 ipl_transform_func.txt
+data_preprocessing.txt
+ER.png
+relationship_summary.png
+schema.png
+
