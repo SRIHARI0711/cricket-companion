@@ -1,34 +1,48 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cricket Companion</title>
+    <title>Cricket Companion — Your Ultimate Cricket Portal</title>
+    <meta name="description" content="Explore cricket teams, players, series, match details, and AI-powered analytics. The ultimate cricket companion for enthusiasts.">
+
+    <!-- Google Fonts: Rajdhani (headings) + Inter (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏏</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body data-theme="dark">
-    <!-- Login Page -->
+
+    <!-- ============================================================
+         LOGIN PAGE
+    ============================================================ -->
     <div id="loginPage" class="login-page">
+        <!-- Particle canvas for floating dots effect -->
+        <canvas id="loginParticles"></canvas>
+
         <div class="login-container">
             <div class="login-header">
                 <h1>🏏 Cricket Companion</h1>
-                <p>Please login to continue</p>
+                <p>Please sign in to continue</p>
             </div>
             <form id="loginForm" class="login-form">
                 <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required placeholder="Enter username">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required placeholder="Enter your username" autocomplete="username">
                 </div>
                 <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required placeholder="Enter password">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter your password" autocomplete="current-password">
                 </div>
-                <button type="submit" class="login-btn" onclick="handleLoginClick(event)">Login</button>
+                <button type="submit" class="login-btn" onclick="handleLoginClick(event)" id="loginSubmitBtn">
+                    Sign In →
+                </button>
                 <div class="login-info">
-                    <p><strong>Default Credentials:</strong></p>
+                    <p><strong>Default Credentials</strong></p>
                     <p>Username: <code>admin</code></p>
                     <p>Password: <code>cricket123</code></p>
                 </div>
@@ -36,49 +50,58 @@
         </div>
     </div>
 
-    <!-- Main Application (hidden initially) -->
+    <!-- ============================================================
+         MAIN APPLICATION (hidden initially)
+    ============================================================ -->
     <div id="mainApp" class="container" style="display: none;">
-        <!-- Sidebar -->
+
+        <!-- ---- Sidebar ---- -->
         <nav class="sidebar" id="sidebar">
-            <div class="logo" id="appLogo" style="cursor:pointer;">Cricket Companion</div>
+            <div class="logo" id="appLogo" style="cursor:pointer;" onclick="showPage('home')">
+                Cricket Companion
+            </div>
+
             <div class="user-info">
                 <span id="welcomeUser">Welcome, User!</span>
-                <button class="logout-btn" onclick="logout(); return false;">Logout</button>
+                <button class="logout-btn" onclick="logout(); return false;" id="sidebarLogoutBtn">Logout</button>
             </div>
-            <div class="nav-item active" data-page="home">
+
+            <div class="nav-item active" data-page="home" id="nav-home">
                 <i>🏠</i> Home
             </div>
-            <div class="nav-item" data-page="teams">
+            <div class="nav-item" data-page="teams" id="nav-teams">
                 <i>👥</i> Teams
             </div>
-            <div class="nav-item" data-page="players">
+            <div class="nav-item" data-page="players" id="nav-players">
                 <i>🏃</i> Players
             </div>
-            <div class="nav-item" data-page="series">
+            <div class="nav-item" data-page="series" id="nav-series">
                 <i>📊</i> Series
             </div>
-            <div class="nav-item" data-page="matches">
+            <div class="nav-item" data-page="matches" id="nav-matches">
                 <i>🏏</i> Matches
             </div>
-            <div class="nav-item" data-page="scorecards">
+            <div class="nav-item" data-page="scorecards" id="nav-scorecards">
                 <i>📋</i> Scorecards
             </div>
-            <div class="nav-item" data-page="analytics">
+            <div class="nav-item" data-page="analytics" id="nav-analytics">
                 <i>📈</i> Analytics
             </div>
         </nav>
 
-        <!-- Main Content -->
+        <!-- ---- Main Content ---- -->
         <main class="main-content" id="mainContent">
             <header class="header">
                 <button class="mobile-toggle" id="mobileToggle">☰</button>
+
                 <div class="user-info hidden" id="userInfo">
                     <div class="user-avatar" id="userAvatar">U</div>
                     <span id="userName">User</span>
-                    <button class="logout-btn" onclick="logout(); return false;">Logout</button>
+                    <button class="logout-btn" onclick="logout(); return false;" id="headerLogoutBtn">Logout</button>
                 </div>
+
                 <div>
-                    <label class="theme-switch" id="themeToggle">
+                    <label class="theme-switch" id="themeToggle" title="Toggle light/dark theme">
                       <input type="checkbox" class="theme-switch__checkbox" id="themeCheckbox">
                       <div class="theme-switch__container">
                         <div class="theme-switch__clouds"></div>
@@ -101,17 +124,20 @@
                 </div>
             </header>
 
-            <!-- Page Content -->
+            <!-- ============================================================
+                 PAGE CONTENT
+            ============================================================ -->
             <div id="pageContent">
-                <!-- Home Page -->
+
+                <!-- ---- HOME PAGE ---- -->
                 <div id="homePage" class="page">
                     <section class="hero-section">
                         <div class="hero-content">
-                            <h1>Welcome to Cricket Companion!</h1>
+                            <h1>Welcome to <span>Cricket Companion!</span></h1>
                             <p>Your ultimate portal for exploring cricket teams, players, series, match details, and AI-powered summaries.</p>
                             <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                                <button class="btn" onclick="showPage('teams')">Explore Teams →</button>
-                                <button class="btn" style="background: var(--warning-color);" onclick="showComingSoonAlert()">🚀 Try Match Summarizer</button>
+                                <button class="btn" onclick="showPage('teams')" id="heroExploreTeamsBtn">Explore Teams →</button>
+                                <button class="btn" style="background: linear-gradient(135deg, #f0a500, #d4900a); box-shadow: 0 2px 12px rgba(240,165,0,0.3);" onclick="showComingSoonAlert()" id="heroSummarizerBtn">🚀 Try Match Summarizer</button>
                             </div>
                         </div>
                     </section>
@@ -120,41 +146,44 @@
                         <div class="feature-card">
                             <span class="feature-icon">👥</span>
                             <h3>Team Overviews</h3>
-                            <p>Discover cricket teams, their coaches, and captains.</p>
-                            <button class="btn" onclick="showPage('teams')" style="margin-top: 1rem;">Learn More →</button>
+                            <p>Discover cricket teams, their coaches, and captains from around the world.</p>
+                            <button class="btn" onclick="showPage('teams')" style="margin-top: 1.25rem;" id="featureTeamsBtn">Learn More →</button>
                         </div>
                         <div class="feature-card">
                             <span class="feature-icon">🏃</span>
                             <h3>Player Profiles</h3>
-                            <p>Get to know players, their roles, and career details.</p>
-                            <button class="btn" onclick="showPage('players')" style="margin-top: 1rem;">Learn More →</button>
+                            <p>Get to know players, their roles, and career details in depth.</p>
+                            <button class="btn" onclick="showPage('players')" style="margin-top: 1.25rem;" id="featurePlayersBtn">Learn More →</button>
                         </div>
                         <div class="feature-card">
                             <span class="feature-icon">📊</span>
                             <h3>Series Tracking</h3>
-                            <p>Follow ongoing and upcoming cricket series.</p>
-                            <button class="btn" onclick="showPage('series')" style="margin-top: 1rem;">Learn More →</button>
+                            <p>Follow ongoing and upcoming cricket series with live status updates.</p>
+                            <button class="btn" onclick="showPage('series')" style="margin-top: 1.25rem;" id="featureSeriesBtn">Learn More →</button>
+                        </div>
+                        <div class="feature-card">
+                            <span class="feature-icon">🤖</span>
+                            <h3>AI Analytics</h3>
+                            <p>Explore ML-powered player clusters, win predictions, and performance insights.</p>
+                            <button class="btn" onclick="showPage('analytics')" style="margin-top: 1.25rem;" id="featureAnalyticsBtn">Explore →</button>
                         </div>
                     </div>
 
-                    <div class="card" style="margin-top: 3rem;">
-                        <h2>About This App</h2>
-                        <p>Cricket Companion is a Node.js application designed to provide a rich user experience for cricket enthusiasts. It leverages modern web technologies and AI to deliver comprehensive cricket information. Please note that this version uses mock data for demonstration purposes. The backend API and database integration as specified in the initial proposal (Express.js, SQL) are not part of this Next.js scaffold and would need to be implemented separately.</p>
-                        <p style="margin-top: 1rem; opacity: 0.8; font-size: 0.9rem;">© 2025 Cricket Companion. All rights reserved. | Designed by: Chandan, Srihari, Gagan</p>
+                    <div class="card" style="margin-top: 3rem; text-align: center;">
+                        <h2 style="margin-bottom: 0.75rem;">About This App</h2>
+                        <p style="color: var(--text-secondary); max-width: 680px; margin: 0 auto 1rem;">Cricket Companion is a full-stack application delivering a rich experience for cricket enthusiasts. Powered by an Express.js API, SQL database, and machine learning models for intelligent analytics.</p>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">© 2025 Cricket Companion. All rights reserved. | Designed by: Chandan, Srihari, Gagan</p>
                     </div>
                 </div>
 
-                <!-- Teams Page -->
+                <!-- ---- TEAMS PAGE ---- -->
                 <div id="teamsPage" class="page hidden">
                     <div class="card">
-                        <h2>Teams Management</h2>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-                            <div>
-                                <input type="text" id="teamSearch" placeholder="Search teams..." style="padding: 0.5rem; border-radius: 8px; border: 2px solid var(--hover-color); background: var(--primary-color); color: var(--text-light);">
-                            </div>
-                            <button class="btn" onclick="showAddTeamForm()">+ Add New Team</button>
+                        <h2 style="margin-bottom: 1.5rem;">Teams Management</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                            <input type="text" id="teamSearch" placeholder="🔍  Search teams..." style="max-width: 280px;">
+                            <button class="btn" onclick="showAddTeamForm()" id="addTeamBtn">+ Add New Team</button>
                         </div>
-                        
                         <div class="table-container">
                             <table id="teamsTable">
                                 <thead>
@@ -167,24 +196,21 @@
                                     </tr>
                                 </thead>
                                 <tbody id="teamsTableBody">
-                                    <!-- Teams will be populated here -->
+                                    <!-- populated by JS -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- Players Page -->
+                <!-- ---- PLAYERS PAGE ---- -->
                 <div id="playersPage" class="page hidden">
                     <div class="card">
-                        <h2>Players Management</h2>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-                            <div>
-                                <input type="text" id="playerSearch" placeholder="Search players..." style="padding: 0.5rem; border-radius: 8px; border: 2px solid var(--hover-color); background: var(--primary-color); color: var(--text-light);">
-                            </div>
-                            <button class="btn" onclick="showAddPlayerForm()">+ Add New Player</button>
+                        <h2 style="margin-bottom: 1.5rem;">Players Management</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                            <input type="text" id="playerSearch" placeholder="🔍  Search players..." style="max-width: 280px;">
+                            <button class="btn" onclick="showAddPlayerForm()" id="addPlayerBtn">+ Add New Player</button>
                         </div>
-                        
                         <div class="table-container">
                             <table id="playersTable">
                                 <thead>
@@ -197,24 +223,21 @@
                                     </tr>
                                 </thead>
                                 <tbody id="playersTableBody">
-                                    <!-- Players will be populated here -->
+                                    <!-- populated by JS -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- Series Page -->
+                <!-- ---- SERIES PAGE ---- -->
                 <div id="seriesPage" class="page hidden">
                     <div class="card">
-                        <h2>Series Management</h2>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-                            <div>
-                                <input type="text" id="seriesSearch" placeholder="Search series..." style="padding: 0.5rem; border-radius: 8px; border: 2px solid var(--hover-color); background: var(--primary-color); color: var(--text-light);">
-                            </div>
-                            <button class="btn" onclick="showAddSeriesForm()">+ Add New Series</button>
+                        <h2 style="margin-bottom: 1.5rem;">Series Management</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                            <input type="text" id="seriesSearch" placeholder="🔍  Search series..." style="max-width: 280px;">
+                            <button class="btn" onclick="showAddSeriesForm()" id="addSeriesBtn">+ Add New Series</button>
                         </div>
-                        
                         <div class="table-container">
                             <table id="seriesTable">
                                 <thead>
@@ -228,24 +251,21 @@
                                     </tr>
                                 </thead>
                                 <tbody id="seriesTableBody">
-                                    <!-- Series will be populated here -->
+                                    <!-- populated by JS -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- Matches Page -->
+                <!-- ---- MATCHES PAGE ---- -->
                 <div id="matchesPage" class="page hidden">
                     <div class="card">
-                        <h2>Matches Management</h2>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-                            <div>
-                                <input type="text" id="matchSearch" placeholder="Search matches..." style="padding: 0.5rem; border-radius: 8px; border: 2px solid var(--hover-color); background: var(--primary-color); color: var(--text-light);">
-                            </div>
-                            <button class="btn" onclick="showAddMatchForm()">+ Add New Match</button>
+                        <h2 style="margin-bottom: 1.5rem;">Matches Management</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                            <input type="text" id="matchSearch" placeholder="🔍  Search matches..." style="max-width: 280px;">
+                            <button class="btn" onclick="showAddMatchForm()" id="addMatchBtn">+ Add New Match</button>
                         </div>
-                        
                         <div class="table-container">
                             <table id="matchesTable">
                                 <thead>
@@ -259,24 +279,21 @@
                                     </tr>
                                 </thead>
                                 <tbody id="matchesTableBody">
-                                    <!-- Matches will be populated here -->
+                                    <!-- populated by JS -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- Scorecards Page -->
+                <!-- ---- SCORECARDS PAGE ---- -->
                 <div id="scorecardsPage" class="page hidden">
                     <div class="card">
-                        <h2>Scorecards Management</h2>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-                            <div>
-                                <input type="text" id="scorecardSearch" placeholder="Search scorecards..." style="padding: 0.5rem; border-radius: 8px; border: 2px solid var(--hover-color); background: var(--primary-color); color: var(--text-light);">
-                            </div>
-                            <button class="btn" onclick="showAddScorecardForm()">+ Add New Scorecard</button>
+                        <h2 style="margin-bottom: 1.5rem;">Scorecards Management</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                            <input type="text" id="scorecardSearch" placeholder="🔍  Search scorecards..." style="max-width: 280px;">
+                            <button class="btn" onclick="showAddScorecardForm()" id="addScorecardBtn">+ Add New Scorecard</button>
                         </div>
-                        
                         <div class="table-container">
                             <table id="scorecardsTable">
                                 <thead>
@@ -290,18 +307,18 @@
                                     </tr>
                                 </thead>
                                 <tbody id="scorecardsTableBody">
-                                    <!-- Scorecards will be populated here -->
+                                    <!-- populated by JS -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- Analytics Page -->
+                <!-- ---- ANALYTICS PAGE ---- -->
                 <div id="analyticsPage" class="page hidden">
                     <div class="analytics-header" style="margin-bottom: 2rem;">
-                        <h2>📈 Analytics & Insights Dashboard</h2>
-                        <p style="opacity: 0.8;">Explore player career performance, team win records, AI player clusters, and match win predictions.</p>
+                        <h2>📈 Analytics &amp; Insights Dashboard</h2>
+                        <p style="color: var(--text-secondary); margin-top: 0.4rem;">Explore player career performance, team win records, AI player clusters, and match win predictions.</p>
                     </div>
 
                     <div class="analytics-grid">
@@ -309,87 +326,83 @@
                         <div class="card analytics-card" style="grid-column: 1 / -1;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
                                 <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                                    <h3 style="margin: 0;">🏃 Player Performance & Form Stats</h3>
+                                    <h3 style="margin: 0;">🏃 Player Performance &amp; Form Stats</h3>
                                     <div id="formTrendBadgeContainer" class="form-trend-badge badge-stable">
                                         FORM TREND: <strong id="formTrendText">STABLE</strong>
                                     </div>
                                 </div>
-                                <select id="analyticsPlayerSelect" class="form-control" style="padding: 0.5rem 1rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color); min-width: 250px;">
+                                <select id="analyticsPlayerSelect" class="form-control" style="min-width: 240px;">
                                     <option value="">Select a Player...</option>
                                 </select>
                             </div>
-                            <div id="playerStatsBadges" class="stats-badges-container" style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
-                                <div class="stat-badge"><span>Matches:</span> <strong id="badgeMatches">-</strong></div>
-                                <div class="stat-badge"><span>Total Runs:</span> <strong id="badgeRuns">-</strong></div>
-                                <div class="stat-badge"><span>Batting Avg:</span> <strong id="badgeAvg">-</strong></div>
-                                <div class="stat-badge"><span>Strike Rate:</span> <strong id="badgeSR">-</strong></div>
-                                <div class="stat-badge"><span>Wickets:</span> <strong id="badgeWickets">-</strong></div>
-                                <div class="stat-badge"><span>Form Score:</span> <strong id="badgeFormScore">-</strong></div>
+                            <div id="playerStatsBadges" class="stats-badges-container" style="margin-bottom: 1.5rem;">
+                                <div class="stat-badge"><span>Matches:</span> <strong id="badgeMatches">—</strong></div>
+                                <div class="stat-badge"><span>Total Runs:</span> <strong id="badgeRuns">—</strong></div>
+                                <div class="stat-badge"><span>Batting Avg:</span> <strong id="badgeAvg">—</strong></div>
+                                <div class="stat-badge"><span>Strike Rate:</span> <strong id="badgeSR">—</strong></div>
+                                <div class="stat-badge"><span>Wickets:</span> <strong id="badgeWickets">—</strong></div>
+                                <div class="stat-badge"><span>Form Score:</span> <strong id="badgeFormScore">—</strong></div>
                             </div>
-                            
-                            <!-- Player Charts Grid: Line Chart (10 Matches) + Bar Chart (Player vs Team Avg) -->
                             <div class="player-charts-grid">
                                 <div class="chart-container" style="position: relative; height: 320px;">
-                                    <h4 style="margin-bottom: 0.75rem; font-size: 0.95rem; opacity: 0.9;">📈 Last 10 Matches - Runs Trend</h4>
+                                    <h4 style="margin-bottom: 0.75rem; font-size: 0.9rem; color: var(--text-secondary);">📈 Last 10 Matches — Runs Trend</h4>
                                     <canvas id="playerRunsLineChart"></canvas>
                                 </div>
                                 <div class="chart-container" style="position: relative; height: 320px;">
-                                    <h4 style="margin-bottom: 0.75rem; font-size: 0.95rem; opacity: 0.9;">📊 Player vs Team Average Comparison</h4>
+                                    <h4 style="margin-bottom: 0.75rem; font-size: 0.9rem; color: var(--text-secondary);">📊 Player vs Team Average Comparison</h4>
                                     <canvas id="playerVsTeamBarChart"></canvas>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Section 2: Team Win Rate Comparison & Venue Analytics (Task 13) -->
+                        <!-- Section 2: Team Win Rate Comparison & Venue Analytics -->
                         <div class="card analytics-card" style="grid-column: 1 / -1;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
                                 <div>
-                                    <h3 style="margin: 0;">🏆 Team Win Rate Comparison & Venue Analytics</h3>
-                                    <p style="opacity: 0.75; font-size: 0.9rem; margin-top: 0.25rem;">Overall team win rates sorted, batting vs fielding first split, and venue performance heatmap.</p>
+                                    <h3 style="margin: 0;">🏆 Team Win Rate Comparison &amp; Venue Analytics</h3>
+                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">Overall team win rates sorted, batting vs fielding first split, and venue performance heatmap.</p>
                                 </div>
-                                <select id="winrateTeamSelect" class="form-control" style="padding: 0.5rem 1rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color); min-width: 250px;">
-                                    <option value="">-- Select Focus Team --</option>
+                                <select id="winrateTeamSelect" class="form-control" style="min-width: 240px;">
+                                    <option value="">— Select Focus Team —</option>
                                 </select>
                             </div>
 
-                            <!-- Horizontal Bar: All Teams Sorted -->
                             <div class="chart-container" style="position: relative; height: 350px; margin-bottom: 1.5rem;">
-                                <h4 style="margin-bottom: 0.75rem; font-size: 0.95rem; opacity: 0.9;">📊 Team Win Rates (Sorted Descending)</h4>
+                                <h4 style="margin-bottom: 0.75rem; font-size: 0.9rem; color: var(--text-secondary);">📊 Team Win Rates (Sorted Descending)</h4>
                                 <canvas id="teamWinRateHorizontalBarChart"></canvas>
                             </div>
 
-                            <!-- Doughnut + Heatmap side-by-side grid -->
                             <div class="team-analytics-grid">
                                 <div class="chart-container" style="position: relative; height: 300px;">
-                                    <h4 style="margin-bottom: 0.75rem; font-size: 0.95rem; opacity: 0.9;">🍩 Batting First vs Fielding First Wins</h4>
+                                    <h4 style="margin-bottom: 0.75rem; font-size: 0.9rem; color: var(--text-secondary);">🍩 Batting First vs Fielding First Wins</h4>
                                     <canvas id="homeAwayDoughnutChart"></canvas>
                                 </div>
                                 <div>
-                                    <h4 style="margin-bottom: 0.75rem; font-size: 0.95rem; opacity: 0.9;">🏟️ Venue Performance Heatmap</h4>
+                                    <h4 style="margin-bottom: 0.75rem; font-size: 0.9rem; color: var(--text-secondary);">🏟️ Venue Performance Heatmap</h4>
                                     <div id="venueHeatmapGrid" class="venue-heatmap-grid">
-                                        <p style="opacity: 0.6; font-size: 0.9rem;">Select a team to view venue breakdown.</p>
+                                        <p style="color: var(--text-muted); font-size: 0.85rem;">Select a team to view venue breakdown.</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Section 3: Player Clusters Scatter Plot (Task 15) -->
+                        <!-- Section 3: Player Clusters Scatter Plot -->
                         <div class="card analytics-card">
                             <div style="margin-bottom: 1.5rem;">
                                 <h3>🤖 Player Cluster Archetypes (K-Means AI)</h3>
-                                <p style="opacity: 0.75; font-size: 0.9rem;">Scatter plot mapping Strike Rate (X-axis) vs Batting Average (Y-axis) colored by AI archetype cluster.</p>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.3rem;">Scatter plot mapping Strike Rate (X) vs Batting Average (Y) coloured by AI archetype cluster.</p>
                             </div>
                             <div class="chart-container" style="position: relative; height: 380px;">
                                 <canvas id="playerClustersScatterPlot"></canvas>
                             </div>
                         </div>
 
-                        <!-- Section 4: Win Predictor Form (Task 14) -->
+                        <!-- Section 4: Win Predictor Form -->
                         <div class="card analytics-card">
                             <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                                 <div>
                                     <h3 style="margin: 0;">🔮 Match Win Predictor</h3>
-                                    <p style="opacity: 0.75; font-size: 0.9rem; margin-top: 0.25rem;">Input match state — ML prediction recalculates live in real-time.</p>
+                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.3rem;">Input match state — ML prediction recalculates live in real-time.</p>
                                 </div>
                                 <div id="liveStatusIndicator" class="live-status-indicator status-idle">
                                     <span class="pulse-dot"></span>
@@ -401,19 +414,19 @@
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                                     <div class="form-group">
                                         <label for="predictBattingTeam">Batting Team (Chasing):</label>
-                                        <select id="predictBattingTeam" name="batting_team" required class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color);">
+                                        <select id="predictBattingTeam" name="batting_team" required>
                                             <option value="">Select Batting Team</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
                                         <label for="predictBowlingTeam">Bowling Team (Defending):</label>
-                                        <select id="predictBowlingTeam" name="bowling_team" required class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color);">
+                                        <select id="predictBowlingTeam" name="bowling_team" required>
                                             <option value="">Select Bowling Team</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
                                         <label for="predictVenue">Match Venue:</label>
-                                        <select id="predictVenue" name="venue" required class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 8px; background: var(--primary-color); color: var(--text-light); border: 2px solid var(--hover-color);">
+                                        <select id="predictVenue" name="venue" required>
                                             <option value="">Loading venues...</option>
                                         </select>
                                     </div>
@@ -434,83 +447,141 @@
                                         <input type="number" id="predictTarget" name="target" min="1" required placeholder="e.g. 180">
                                     </div>
                                 </div>
-                                <button type="submit" class="btn" style="width: 100%; background: var(--accent-color); font-weight: bold; padding: 0.75rem;">⚡ Predict Match Winner</button>
+                                <button type="submit" class="btn" style="width: 100%; font-size: 1.05rem; padding: 0.85rem; background: linear-gradient(135deg, #f0a500, #d4900a); box-shadow: 0 4px 20px rgba(240,165,0,0.3);" id="predictBtn">
+                                    ⚡ Predict Match Winner
+                                </button>
                             </form>
 
-                            <div id="predictionResult" class="prediction-result-container hidden" style="margin-top: 2rem;">
+                            <div id="predictionResult" class="prediction-result-container hidden" style="margin-top: 1.5rem;">
                                 <h4 style="margin-bottom: 1rem; text-align: center;" id="predictedWinnerHeading">Prediction Results</h4>
 
-                                <!-- Chart.js Gauge Canvas -->
                                 <div class="prediction-gauge-wrapper">
                                     <canvas id="winPredictorGaugeChart"></canvas>
                                 </div>
 
                                 <div class="probability-bars" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
                                     <div>
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                                            <span id="battingTeamProbLabel">Batting Team</span>
-                                            <strong id="battingTeamProbPct">0%</strong>
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                                            <span id="battingTeamProbLabel" style="font-size: 0.9rem;">Batting Team</span>
+                                            <strong id="battingTeamProbPct" style="color: var(--green);">0%</strong>
                                         </div>
-                                        <div class="progress-bar-bg" style="background: var(--secondary-color); height: 14px; border-radius: 8px; overflow: hidden;">
-                                            <div id="battingTeamProbFill" style="background: #10b981; height: 100%; width: 0%; transition: width 0.6s ease;"></div>
+                                        <div style="background: var(--glass-bg); border: 1px solid var(--glass-border); height: 10px; border-radius: 99px; overflow: hidden;">
+                                            <div id="battingTeamProbFill" style="background: linear-gradient(90deg, #00c896, #00a87e); height: 100%; width: 0%; transition: width 0.7s cubic-bezier(0.4,0,0.2,1); border-radius: 99px;"></div>
                                         </div>
                                     </div>
                                     <div>
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                                            <span id="bowlingTeamProbLabel">Bowling Team</span>
-                                            <strong id="bowlingTeamProbPct">0%</strong>
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                                            <span id="bowlingTeamProbLabel" style="font-size: 0.9rem;">Bowling Team</span>
+                                            <strong id="bowlingTeamProbPct" style="color: var(--gold);">0%</strong>
                                         </div>
-                                        <div class="progress-bar-bg" style="background: var(--secondary-color); height: 14px; border-radius: 8px; overflow: hidden;">
-                                            <div id="bowlingTeamProbFill" style="background: #f59e0b; height: 100%; width: 0%; transition: width 0.6s ease;"></div>
+                                        <div style="background: var(--glass-bg); border: 1px solid var(--glass-border); height: 10px; border-radius: 99px; overflow: hidden;">
+                                            <div id="bowlingTeamProbFill" style="background: linear-gradient(90deg, #f0a500, #d4900a); height: 100%; width: 0%; transition: width 0.7s cubic-bezier(0.4,0,0.2,1); border-radius: 99px;"></div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
 
-    <!-- Login Modal -->
+                    </div><!-- end analytics-grid -->
+                </div><!-- end analyticsPage -->
+
+            </div><!-- end pageContent -->
+        </main>
+    </div><!-- end mainApp -->
+
+    <!-- ---- Login Modal (secondary) ---- -->
     <div id="loginModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="hideLogin()">&times;</span>
+            <button class="close" onclick="hideLogin()" id="loginModalClose" aria-label="Close">&times;</button>
             <h2 style="margin-bottom: 1.5rem; text-align: center;">Login to Cricket Companion</h2>
-            <form id="loginForm" onsubmit="handleLogin(event)">
+            <form id="loginModalForm" onsubmit="handleLogin(event)">
                 <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required>
+                    <label for="modalUsername">Username:</label>
+                    <input type="text" id="modalUsername" name="username" required placeholder="Enter username">
                 </div>
                 <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required>
+                    <label for="modalPassword">Password:</label>
+                    <input type="password" id="modalPassword" name="password" required placeholder="Enter password">
                 </div>
-                <button type="submit" class="btn" style="width: 100%;">Login</button>
+                <button type="submit" class="btn" style="width: 100%;" id="loginModalBtn">Login</button>
+                <!-- Hidden compat element referenced by script.js handleLogin() -->
+                <span id="loginBtn" style="display:none;"></span>
             </form>
-            <p style="text-align: center; margin-top: 1rem; opacity: 0.8;">
-                Demo credentials: admin/admin123
+            <p style="text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.85rem;">
+                Demo credentials: admin / cricket123
             </p>
         </div>
     </div>
 
-    <!-- Add/Edit Forms Modal -->
+    <!-- ---- Add/Edit Forms Modal ---- -->
     <div id="formModal" class="modal">
         <div class="modal-content" style="max-width: 600px;">
-            <span class="close" onclick="hideFormModal()">&times;</span>
+            <button class="close" onclick="hideFormModal()" id="formModalClose" aria-label="Close">&times;</button>
             <div id="formContent">
-                <!-- Dynamic form content will be inserted here -->
+                <!-- Dynamic form content injected by script.js -->
             </div>
         </div>
     </div>
-    </div> <!-- End of mainApp -->
 
+    <!-- ---- Scripts ---- -->
     <script src="search.js"></script>
     <script src="script.js"></script>
+    <script src="cursor.js"></script>
+
+    <!-- Particle animation for login page -->
+    <script>
+    (function initLoginParticles() {
+        const canvas = document.getElementById('loginParticles');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width  = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        const PARTICLE_COUNT = 55;
+        const particles = [];
+
+        function rand(min, max) { return Math.random() * (max - min) + min; }
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            particles.push({
+                x: rand(0, window.innerWidth),
+                y: rand(0, window.innerHeight),
+                r: rand(1, 3.5),
+                vx: rand(-0.25, 0.25),
+                vy: rand(-0.4, -0.1),
+                alpha: rand(0.15, 0.55),
+                color: Math.random() > 0.6 ? '#f0a500' : '#00c896'
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.alpha;
+                ctx.fill();
+
+                p.x += p.vx;
+                p.y += p.vy;
+
+                /* Wrap */
+                if (p.y < -10) { p.y = canvas.height + 10; p.x = rand(0, canvas.width); }
+                if (p.x < -10) p.x = canvas.width + 10;
+                if (p.x > canvas.width + 10) p.x = -10;
+            });
+            ctx.globalAlpha = 1;
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    })();
+    </script>
 </body>
 </html>
-
-        
