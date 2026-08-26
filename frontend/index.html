@@ -55,37 +55,39 @@
     ============================================================ -->
     <div id="mainApp" class="container" style="display: none;">
 
-        <!-- ---- Sidebar ---- -->
+        <!-- ---- Top Navbar ---- -->
         <nav class="sidebar" id="sidebar">
             <div class="logo" id="appLogo" style="cursor:pointer;" onclick="showPage('home')">
                 Cricket Companion
             </div>
 
+            <div class="nav-items-container">
+                <div class="nav-item active" data-page="home" id="nav-home">
+                    <i>🏠</i> Home
+                </div>
+                <div class="nav-item" data-page="teams" id="nav-teams">
+                    <i>👥</i> Teams
+                </div>
+                <div class="nav-item" data-page="players" id="nav-players">
+                    <i>🏃</i> Players
+                </div>
+                <div class="nav-item" data-page="series" id="nav-series">
+                    <i>📊</i> Series
+                </div>
+                <div class="nav-item" data-page="matches" id="nav-matches">
+                    <i>🏏</i> Matches
+                </div>
+                <div class="nav-item" data-page="scorecards" id="nav-scorecards">
+                    <i>📋</i> Scorecards
+                </div>
+                <div class="nav-item" data-page="analytics" id="nav-analytics">
+                    <i>📈</i> Analytics
+                </div>
+            </div>
+
             <div class="user-info">
                 <span id="welcomeUser">Welcome, User!</span>
                 <button class="logout-btn" onclick="logout(); return false;" id="sidebarLogoutBtn">Logout</button>
-            </div>
-
-            <div class="nav-item active" data-page="home" id="nav-home">
-                <i>🏠</i> Home
-            </div>
-            <div class="nav-item" data-page="teams" id="nav-teams">
-                <i>👥</i> Teams
-            </div>
-            <div class="nav-item" data-page="players" id="nav-players">
-                <i>🏃</i> Players
-            </div>
-            <div class="nav-item" data-page="series" id="nav-series">
-                <i>📊</i> Series
-            </div>
-            <div class="nav-item" data-page="matches" id="nav-matches">
-                <i>🏏</i> Matches
-            </div>
-            <div class="nav-item" data-page="scorecards" id="nav-scorecards">
-                <i>📋</i> Scorecards
-            </div>
-            <div class="nav-item" data-page="analytics" id="nav-analytics">
-                <i>📈</i> Analytics
             </div>
         </nav>
 

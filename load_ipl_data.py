@@ -404,32 +404,23 @@ def load_scorecards(cursor, deliveries_df: pd.DataFrame, player_map: dict, match
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    log.info("═" * 60)
-    log.info("IPL Data Loader — Phase 1: Data Foundation")
-    log.info("═" * 60)
+    log.info("=" * 60)
+    log.info("IPL Data Loader - Phase 1: Data Foundation")
+    log.info("=" * 60)
 
-    # 1. Kaggle auth
-    if not setup_kaggle_auth():
-        sys.exit(1)
+    # 1. Locate existing local CSVs first
+    matches_csv = find_csv(DOWNLOAD_DIR, ["match"])
+    deliveries_csv = find_csv(DOWNLOAD_DIR, ["deliver", "ball"])
 
-    # 2. Download dataset
-    success = download_dataset(KAGGLE_DATASET, DOWNLOAD_DIR)
-    if not success:
-        log.info(f"Trying fallback dataset: {FALLBACK_DATASET}")
-        success = download_dataset(FALLBACK_DATASET, DOWNLOAD_DIR)
-    if not success:
-        log.error(
-            "Both datasets failed to download.\n"
-            "Manual fallback:\n"
-            "  1. Go to https://www.kaggle.com/datasets/patrickb1912/ipl-complete-dataset-20082020\n"
-            "  2. Download and unzip into a folder named 'ipl_data_raw/'\n"
-            "  3. Re-run this script."
-        )
-        sys.exit(1)
-
-    # 3. Locate CSVs
-    matches_csv     = find_csv(DOWNLOAD_DIR, ["match"])
-    deliveries_csv  = find_csv(DOWNLOAD_DIR, ["deliver", "ball"])
+    # 2. Download from Kaggle only if local CSVs are not present
+    if not matches_csv:
+        if setup_kaggle_auth():
+            success = download_dataset(KAGGLE_DATASET, DOWNLOAD_DIR)
+            if not success:
+                log.info(f"Trying fallback dataset: {FALLBACK_DATASET}")
+                success = download_dataset(FALLBACK_DATASET, DOWNLOAD_DIR)
+        matches_csv = find_csv(DOWNLOAD_DIR, ["match"])
+        deliveries_csv = find_csv(DOWNLOAD_DIR, ["deliver", "ball"])
 
     if not matches_csv:
         log.error(f"Could not find matches CSV in {DOWNLOAD_DIR}/. Files present:")

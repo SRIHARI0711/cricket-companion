@@ -83,10 +83,22 @@ router.delete('/players/:id', (req, res) => {
 // Get all teams
 router.get('/teams', (req, res) => {
   console.log('GET /api/teams - Fetching all teams');
-  db.query('SELECT * FROM teams ORDER BY created_at DESC', (err, results) => {
+  db.query(`
+    SELECT t.*, 
+           COUNT(p.id) as player_count,
+           GROUP_CONCAT(p.name SEPARATOR ', ') as player_names
+    FROM teams t
+    LEFT JOIN players p ON (p.team = t.team_name OR p.team = CAST(t.id AS CHAR))
+    GROUP BY t.id
+    ORDER BY t.created_at DESC
+  `, (err, results) => {
     if (err) {
-      console.error('Error fetching teams:', err);
-      return res.status(500).json({ error: err.message });
+      console.error('Error fetching teams with counts:', err);
+      db.query('SELECT * FROM teams ORDER BY created_at DESC', (err2, results2) => {
+        if (err2) return res.status(500).json({ error: err2.message });
+        res.json(results2);
+      });
+      return;
     }
     console.log(`Found ${results.length} teams`);
     res.json(results);
@@ -149,8 +161,20 @@ router.delete('/teams/:id', (req, res) => {
 // ============ SERIES ROUTES ============
 // Get all series
 router.get('/series', (req, res) => {
-  db.query('SELECT * FROM series', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+  db.query(`
+    SELECT s.*, COUNT(m.id) as match_count
+    FROM series s
+    LEFT JOIN matches m ON m.series_id = s.id
+    GROUP BY s.id
+    ORDER BY s.start_date DESC
+  `, (err, results) => {
+    if (err) {
+      db.query('SELECT * FROM series', (err2, results2) => {
+        if (err2) return res.status(500).json({ error: err2.message });
+        res.json(results2);
+      });
+      return;
+    }
     res.json(results);
   });
 });
@@ -217,11 +241,16 @@ router.delete('/series/:id', (req, res) => {
 // Get all matches
 router.get('/matches', (req, res) => {
   db.query(`
-    SELECT m.*, s.series_name, t1.team_name as team1_name, t2.team_name as team2_name
+    SELECT m.*, s.series_name, 
+           t1.team_name as team1_name, 
+           t2.team_name as team2_name,
+           tw.team_name as winner_name
     FROM matches m
     LEFT JOIN series s ON m.series_id = s.id
     LEFT JOIN teams t1 ON m.team1_id = t1.id
     LEFT JOIN teams t2 ON m.team2_id = t2.id
+    LEFT JOIN teams tw ON m.winner_id = tw.id
+    ORDER BY m.match_date DESC
   `, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
@@ -297,10 +326,14 @@ router.delete('/matches/:id', (req, res) => {
 // Get all scorecards
 router.get('/scorecards', (req, res) => {
   db.query(`
-    SELECT sc.*, p.name as player_name, m.id as match_id
+    SELECT sc.*, p.name as player_name, m.id as match_id,
+           t1.team_name as team1_name, t2.team_name as team2_name
     FROM scorecards sc
     LEFT JOIN players p ON sc.player_id = p.id
     LEFT JOIN matches m ON sc.match_id = m.id
+    LEFT JOIN teams t1 ON m.team1_id = t1.id
+    LEFT JOIN teams t2 ON m.team2_id = t2.id
+    ORDER BY sc.id DESC
   `, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);

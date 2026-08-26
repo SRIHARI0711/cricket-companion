@@ -58,6 +58,14 @@ class DummyAsyncConn:
         pass
 
 
+def test_root_returns_200():
+    """Test 0: Root path returns HTTP 200 OK."""
+    response = client.get("/")
+    assert response.status_code == 200
+    data = response.json()
+    assert "docs" in data
+
+
 # ---------------------------------------------------------------------------
 # 1. Health Check Endpoint Returns 200
 # ---------------------------------------------------------------------------

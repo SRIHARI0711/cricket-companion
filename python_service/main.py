@@ -68,8 +68,17 @@ app.include_router(router)
 
 
 # ---------------------------------------------------------------------------
-# Health-check
+# Root & Health-check
 # ---------------------------------------------------------------------------
+
+@app.get("/", tags=["Root"], summary="API Root endpoint")
+async def root():
+    return {
+        "message": "Cricket Companion Analytics API Service",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
 
 @app.get("/health", tags=["Health"], summary="Service health check")
 async def health():
